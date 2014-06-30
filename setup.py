@@ -8,7 +8,7 @@ Usage:
 from setuptools import setup
 
 #APP = ['cli.py']
-APP = ['micc.MICC.py']
+APP = ['micc/MICC.py']
 DATA_FILES = []
 OPTIONS = {'argv_emulation': True}
 
