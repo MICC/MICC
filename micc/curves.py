@@ -3,7 +3,6 @@
 # Give curve pairs class structure in preparation for public access
 import numpy as np
 from itertools import product
-from graph import Graph
 from copy import deepcopy
 
 
@@ -879,67 +878,18 @@ def matrix_is_multicurve(beta):
 
 
 
-class curvePair:
 
-	def __init__(self,topBeta,bottomBeta, dist=1, graph=1):
-
-		is_ladder = lambda top, bottom: not (0 in top or 0 in bottom)
-
-		if is_ladder(topBeta,bottomBeta):
-			self.ladder = [topBeta, bottomBeta]
-		else:
-			self.ladder = None
-		
-
-
-		if is_ladder(topBeta, bottomBeta):
-			self.beta = ladderConvert(topBeta, bottomBeta)
-			self.top = self.beta[0]
-			self.bottom = self.beta[1]
-		else:
-			self.top = topBeta
-			self.bottom = bottomBeta
-			self.beta = [self.top, self.bottom]
-
-		self.n = len(self.top)
-
-		self.matrix = np.zeros((2,self.n,4))
-		self.matrix[0,:,0] = [self.n-1] + range(self.n-1)
-		self.matrix[0,:,1] = self.top
-		self.matrix[0,:,2] = range(1,self.n) +[0]
-		self.matrix[0,:,3] = self.bottom
-
-		self.matrix = fixMatrixSigns(self.matrix)
-
-		self.boundaries = boundaryCount(self.matrix)
-		self.genus = genus(self.matrix)
-		self.edges = edges(self.matrix)
-
-		self.solution = vectorSolution(self.edges[0])
-
-
-		if graph is 1:
-			self.loops = Graph(self, self.edges).gammas
-		else:
-			self.loops = []
-
-		if dist is 1:
-			self.distance, self.loopMatrices = distance(self.matrix,self.loops)
-		else:
-			self.distance = None
-
-		def __repr__(self):
-			return self.ladder[0]+'\n'+self.ladder[1]+'\n'
 
 
 def test_permutations(original_ladder):
 	distance4 = []
 	distance3 = []
+	from curvepair import CurvePair
 	ladder = deepcopy(original_ladder)
 	if not original_ladder is None:
 		for i in range(len(ladder[0])):
 			if not ladder_is_multicurve(*ladder):
-				perm = curvePair(*ladder)
+				perm = CurvePair(*ladder)
 			else:
 				perm = None
 			if not perm is None :
@@ -976,10 +926,11 @@ def test_perms(original_ladder):
 	distance4 = []
 	distance3 = []
 	ladder_to_perm = deepcopy(original_ladder)
+	from curvepair import CurvePair
 	if not original_ladder is None:
 		for i in range(len(ladder_to_perm[0])):
 			if not ladder_is_multicurve(*ladder_to_perm):
-				perm = curvePair(*deepcopy(ladder_to_perm))
+				perm = CurvePair(*deepcopy(ladder_to_perm))
 			else:
 				perm = None
 			if not perm is None :

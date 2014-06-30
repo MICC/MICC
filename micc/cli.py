@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import curves as c
+from curvepair import CurvePair
 
 class CLI:
 
@@ -202,7 +203,7 @@ class CLI:
 				print "There seems to be an error in your entry. Please try again. "
 
 		if not self.is_multi(self.topRow, self.bottomRow):
-				self.curve = c.curvePair(self.topRow, self.bottomRow)
+				self.curve = CurvePair(self.topRow, self.bottomRow)
 				print 'Note: if you permute a curve with \'perm\', the sheared curves will be lost.'
 
 		else:
