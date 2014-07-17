@@ -1,4 +1,4 @@
-MICC
+MICC [![Build Status](https://travis-ci.org/MICC/MICC.svg?branch=master)](https://travis-ci.org/MICC/MICC)
 ====
 
 Metric in the Curve Complex
