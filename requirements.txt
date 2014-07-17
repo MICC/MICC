@@ -1,5 +1,4 @@
 distribute==0.7.3
-envisage==4.3.0
 futures==2.1.6
 llvmmath==0.1
 llvmpy==0.12.6
