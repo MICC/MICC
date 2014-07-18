@@ -6,9 +6,8 @@ Usage:
 """
 
 from setuptools import setup
-
-#APP = ['cli.py']
-APP = ['micc/MICC.py']
+'''
+APP = ['cli.py']
 DATA_FILES = []
 OPTIONS = {'argv_emulation': True}
 
@@ -18,3 +17,20 @@ setup(
     options={'py2app': OPTIONS},
     setup_requires=['py2app'],
 )
+'''
+
+setup(name='MICC',
+      version='0.1.0',
+      author='Matt Morse, Paul Glenn',
+      author_email='mjmorse@buffalo.edu, paulglen@berkeley.edu',
+      packages=['micc', 'micc.tests'],
+      url='https://github.com/micc/micc',
+      license='LICENSE',
+      description='An implementation of the Birman-Margalit-Menasco Theorem, to be used in a experimental, exploratory manner.',
+      long_description=open('README.rst').read(),
+      install_requires=[
+          "numpy== 1.8.1",
+          "nose >= 1.3.1",
+          "rednose"
+      ],
+      test_suite="nose.collector")

@@ -753,27 +753,6 @@ def Three(M, allPaths, ext=0):
     returnVals = [three, matrixLibrary]
     return returnVals
 
-def distance(M, allPaths):
-    '''
-    :param M: the matrix
-    :type M:
-    :param allPaths:
-    :type allPaths:
-    :returns: dist: the distance if three/four, or 'Higher' if dist is > 4.
-
-    Computes the distance between the two curves embedded in the matrix.
-    If this distance is three, tries to use simple paths to extend the distance
-    in a different direction. If this fails, simply returns three;
-    else it prints a curve that is distance four from alpha.
-
-    '''
-
-    distIsThree, Lib = Three(M, allPaths)
-
-    dist = 3 if distIsThree  else 'at least 4!'
-
-    return dist, Lib
-
 def ladderConvert(ladderTop, ladderBottom):
     #print ladderTop, ladderBottom
     n = len(ladderTop)
@@ -877,10 +856,6 @@ def matrix_is_multicurve(beta):
     return False if counter == len(top) else True
 
 
-
-
-
-
 def test_permutations(original_ladder):
     distance4 = []
     distance3 = []
@@ -919,7 +894,6 @@ def test_permutations(original_ladder):
     else:
         print "You didn't give me a ladder! "
         return []
-
 
 
 def test_perms(original_ladder):

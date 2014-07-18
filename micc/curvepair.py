@@ -1,5 +1,5 @@
 import numpy as np
-from curves import fixMatrixSigns, boundaryCount, genus, ladderConvert, vectorSolution, distance, edges
+from curves import fixMatrixSigns, boundaryCount, genus, ladderConvert, vectorSolution, edges, Three
 from graph import Graph
 
 class CurvePair:
@@ -61,9 +61,44 @@ class CurvePair:
             self.loops = []
 
         if dist is 1:
-            self.distance, self.loopMatrices = distance(self.matrix,self.loops)
+            self.distance, self.loopMatrices = self.compute_distance(self.matrix, self.loops)
         else:
             self.distance = None
 
-        def __repr__(self):
-            return self.ladder[0]+'\n'+self.ladder[1]+'\n'
+    def __repr__(self):
+        return self.ladder[0]+'\n'+self.ladder[1]+'\n'
+
+    def compute_distance(self, M, allPaths):
+        '''
+        :param M: the matrix
+        :type M:
+        :param allPaths:
+        :type allPaths:
+        :returns: dist: the distance if three/four, or 'Higher' if dist is > 4.
+
+        Computes the distance between the two curves embedded in the matrix.
+        If this distance is three, tries to use simple paths to extend the distance
+        in a different direction. If this fails, simply returns three;
+        else it prints a curve that is distance four from alpha.
+
+        '''
+
+        distIsThree, Lib = Three(M, allPaths)
+        #from sys import stderr
+        #stderr.write(str(Lib)+'\n')
+
+        dist = 3 if distIsThree  else 'at least 4!'
+        return dist, Lib
+        '''
+        if dist == 3:
+            return dist, Lib
+        else:
+            geodesic_distances = []
+            return dist, Lib
+            for k,matrix in Lib.iteritems():
+                #stderr.write(str(matrix))
+                cc_distance = CurvePair(matrix[0, :, 1], matrix[0, :, 3])
+                stderr.write(str(k)+": "+str(cc_distance.distance)+'\n')
+                geodesic_distances.append(cc_distance.distance)
+            return set(geodesic_distances).pop() + 1
+        '''
