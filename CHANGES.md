@@ -1,4 +1,4 @@
-## 0.1.0
+## 0.1.1
 July 18, 2014
 
 Initial Release of MICC on PyPi

@@ -12,6 +12,7 @@ Installation
 ------------
 Installing through pip is recommended to use the programmatic interface:
 ::
+
     $ pip install micc
 
 Otherwise, the command line interface for MICC is available `here <http://micc.github.io/>`_.

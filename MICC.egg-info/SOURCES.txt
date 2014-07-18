@@ -2,6 +2,7 @@ AUTHORS
 CHANGES.md
 LICENSE
 MANIFEST.in
+README.rst
 setup.py
 MICC.egg-info/PKG-INFO
 MICC.egg-info/SOURCES.txt
