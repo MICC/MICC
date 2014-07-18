@@ -14,7 +14,7 @@ Installing through pip is recommended to use the programmatic interface:
 ::
     $ pip install micc
 
-Otherwise, the command line interface for MICC is available at <http://micc.github.io/>
+Otherwise, the command line interface for MICC is available `here <http://micc.github.io/>`_.
 
 Getting Started
 ---------------
@@ -36,4 +36,4 @@ License
 -------
 Copyright 2014 Matt Morse and Paul Glenn.
 
-MICC is licensed under the `MIT License <https://github.com/micc/micc/LICENSE>`_.
+MICC is licensed under the `MIT License <https://github.com/MICC/MICC/blob/master/LICENSE>`_.
