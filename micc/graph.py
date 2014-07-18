@@ -4,7 +4,6 @@ import curves as c
 #from curvepair import curvePair
 import itertools as it
 import sys
-from numba import autojit,jit
 '''
 import logging
 
@@ -31,12 +30,6 @@ def invert(path):
     '''
     return shift(path[::-1])
 
-@jit
-def dfs_wrapper(graph_obj, nodes):
-    graph_copy = deepcopy(graph_obj.nodes)
-    for start_node in nodes:
-        for adj_node in graph_copy[start_node]:
-            graph_obj.loopDFS(start_node,adj_node,graph_copy,[start_node],graph_obj.loops, graph_obj.nodes_to_faces)
 rep_num = 1
 
 
