@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: MICC
-Version: 0.1.1z
+Version: 0.1.1
 Summary: An implementation of the Birman-Margalit-Menasco Theorem, to be used in a experimental, exploratory manner.
 Home-page: https://github.com/micc/micc
 Author: Matt Morse, Paul Glenn
@@ -20,6 +20,7 @@ Description: Metric in the Curve Complex: MICC
         ------------
         Installing through pip is recommended to use the programmatic interface:
         ::
+        
             $ pip install micc
         
         Otherwise, the command line interface for MICC is available `here <http://micc.github.io/>`_.

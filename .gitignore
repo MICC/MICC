@@ -5,3 +5,4 @@ build/
 venv/
 *.pyc
 *.pyo
+MICC.egg-info/
