@@ -18,7 +18,7 @@ class CurvePair:
     distance = 0
     loops = []
     '''
-    def __init__(self,topBeta,bottomBeta, dist=1, graph=1):
+    def __init__(self,topBeta,bottomBeta, dist=1, graph=1,conjectured_dist=3):
 
         is_ladder = lambda top, bottom: not (0 in top or 0 in bottom)
 
@@ -56,11 +56,13 @@ class CurvePair:
 
 
         if graph is 1:
-            self.loops = Graph(self, self.edges).gammas
+            self.loops = Graph(self, self.edges, rep_num=conjectured_dist-1).gammas
         else:
             self.loops = []
 
         if dist is 1:
+            #from sys import stderr
+            #stderr.write(str(self.loops)+'\n')
             self.distance, self.loopMatrices = self.compute_distance(self.matrix, self.loops)
         else:
             self.distance = None
@@ -84,21 +86,20 @@ class CurvePair:
         '''
 
         distIsThree, Lib = Three(M, allPaths)
-        #from sys import stderr
         #stderr.write(str(Lib)+'\n')
 
         dist = 3 if distIsThree  else 'at least 4!'
         return dist, Lib
         '''
+        from sys import stderr
         if dist == 3:
             return dist, Lib
         else:
             geodesic_distances = []
-            return dist, Lib
             for k,matrix in Lib.iteritems():
                 #stderr.write(str(matrix))
                 cc_distance = CurvePair(matrix[0, :, 1], matrix[0, :, 3])
                 stderr.write(str(k)+": "+str(cc_distance.distance)+'\n')
                 geodesic_distances.append(cc_distance.distance)
-            return set(geodesic_distances).pop() + 1
+            return min(set(geodesic_distances)) + 1, Lib
         '''

@@ -1,18 +1,5 @@
-import numpy as np
 from copy import deepcopy
 import curves as c
-#from curvepair import curvePair
-import itertools as it
-import sys
-'''
-import logging
-
-import numba.codegen.debug
-#def disableNumbaLogging():
-
-llvmlogger = logging.getLogger('numba.codegen.debug')
-llvmlogger.setLevel(logging.INFO)
-'''
 
 
 def shift(path):
@@ -23,6 +10,7 @@ def shift(path):
     temp = path.index(min(path))
     return path[temp:] + path[:temp]
 
+
 def invert(path):
     '''
     init
@@ -30,17 +18,14 @@ def invert(path):
     '''
     return shift(path[::-1])
 
-rep_num = 1
-
 
 class Graph:
 
     def addNode(self,node):
         self.nodes[node] = []
 
-
-    def __init__(self, curve_pair, param_edges):
-
+    def __init__(self, curve_pair, param_edges, rep_num=1):
+        self.rep_num = rep_num
         self.nodes = {}
         self.counter = 0
         self.loops = []
@@ -71,6 +56,8 @@ class Graph:
             self.addNode(i)
         self.rep_num = 1
         self.findAllEdges(fourgons, non_fourgons, nodes, self.rep_num)
+        import sys
+        sys.stderr.write(str(self.nodes)+'\n')
         graph_copy = deepcopy(self.nodes)
         '''
 
@@ -92,13 +79,12 @@ class Graph:
             for adj_node in graph_copy[start_node]:
                 self.loopDFS(start_node,adj_node,graph_copy,[start_node],self.loops, self.nodes_to_faces)
         '''
+        #Johnson circuit locating algorithm
         from johnson import Johnson
         johnny = Johnson(graph_copy)
         johnny.find_all_circuits()
         self.loops = johnny.circuits
-        #print self.loops
-        #stderr.write(str(graph_copy)+'\n')
-        #stderr.write(str(self.loops))
+
         self.loops = [list(j) for j in set([tuple(i) for i in self.loops])]
         __, edges = param_edges
         for path in list(self.loops):
@@ -112,8 +98,6 @@ class Graph:
                 if not removed:
                     self.loops.remove(path)
                     removed = True
-
-
 
             # Trial: remove all duplicates
             else:
@@ -147,9 +131,7 @@ class Graph:
                                     removed = True
         from curvepair import CurvePair
         for loop in list(self.loops):
-            #beta = list([list(curvePair.top),list(curvePair.bottom)])
             path = list(loop)
-            path2 = list(path)
             path_matrix = c.buildMatrices(deepcopy(edges), [path])
             ladder = [list(path_matrix[0][0,:,1]),list(path_matrix[0][0,:,3])]
 
@@ -158,7 +140,7 @@ class Graph:
                 self.gammas.append(loop)
 
     def getValue(self,pos_to_insert, ladder, path):
-        return	int(path[int(ladder[int(pos_to_insert)])])+1
+        return int(path[int(ladder[int(pos_to_insert)])])+1
 
     def findAllEdges(self, fourgons, non_fourgons, alphaEdgeNodes, rep_num):
         '''
@@ -271,7 +253,7 @@ class Graph:
 
         else:
             for adjacent_node in set(graph[current_node]):
-                if Graph.count(adjacent_node, current_path) < rep_num:
+                if Graph.count(adjacent_node, current_path) < self.rep_num:
                     current_path.append(adjacent_node)
                     graph[current_node].remove(adjacent_node)
                     graph[adjacent_node].remove(current_node)

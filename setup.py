@@ -20,11 +20,12 @@ setup(
 '''
 
 setup(name='MICC',
-      version='0.1.1',
+      version='0.1.21',
       author='Matt Morse, Paul Glenn',
       author_email='mjmorse@buffalo.edu, paulglen@berkeley.edu',
       packages=['micc', 'micc.tests'],
-      url='https://github.com/micc/micc',
+      url='http://micc.github.io',
+      download_url='https://github.com/micc/micc',
       license='LICENSE',
       description='An implementation of the Birman-Margalit-Menasco Theorem, to be used in a experimental, exploratory manner.',
       long_description=open('README.rst').read(),
