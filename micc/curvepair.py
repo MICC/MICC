@@ -89,19 +89,25 @@ class CurvePair:
 
         dist_is_three, lib = Three(M, all_paths)
         #stderr.write(str(lib)+'\n')
-
+        #print len(lib.keys())
+        #print self.solution, len(self.matrix[0])
         dist = 3 if dist_is_three  else 'at least 4!'
-        '''
-        from sys import stderr
         if dist == 3:
             return dist, lib
         else:
             geodesic_distances = []
-            for k,matrix in lib.iteritems():
+            from sys import stderr
+            for k, matrix in lib.iteritems():
                 #stderr.write(str(matrix))
-                cc_distance = CurvePair(matrix[0, :, 1], matrix[0, :, 3])
-                stderr.write(str(k)+": "+str(cc_distance.distance)+'\n')
-                geodesic_distances.append(cc_distance.distance)
+                if np.array_equal(matrix, self.matrix):
+                    continue
+                elif self.solution == CurvePair(matrix[0, :, 1], matrix[0, :, 3],0,0).solution \
+                        and len(self.matrix[0]) == len(matrix[0]):
+                    continue
+                cc = CurvePair(matrix[0, :, 1], matrix[0, :, 3])
+                stderr.write(str(k)+": "+str(cc.distance)+'\n')
+                geodesic_distances.append(cc.distance)
+                #print 'computed curve',k,'!'
+            #print '\n'
             return min(set(geodesic_distances)) + 1, lib
-        '''
-        return dist, lib
+        #return dist, lib

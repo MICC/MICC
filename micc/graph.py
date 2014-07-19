@@ -21,10 +21,10 @@ def invert(path):
 
 class Graph:
 
-    def add_node(self,node):
+    def add_node(self, node):
         self.nodes[node] = []
 
-    def __init__(self,edges, rep_num=1):
+    def __init__(self, edges, rep_num=1):
         self.edges = edges
         self.rep_num = rep_num
         self.nodes = {}
@@ -32,7 +32,7 @@ class Graph:
         self.loops = []
         self.gammas = []
         self.nodes_to_faces = {}
-        self.rep_num = 1
+        self.rep_num = rep_num
 
     def compute_loops(self, n, genus):
         edges = self.edges[0]
@@ -60,17 +60,17 @@ class Graph:
             self.add_node(i)
         self.find_all_edges(fourgons, non_fourgons, nodes, self.rep_num)
         graph_copy = deepcopy(self.nodes)
-        '''
 
         for start_node in nodes:
             for adj_node in graph_copy[start_node]:
-                self.loopDFS(start_node,adj_node,graph_copy,[start_node],self.loops, self.nodes_to_faces)
+                self.loop_dfs(start_node,adj_node,graph_copy,[start_node],self.loops, self.nodes_to_faces)
         '''
         #Johnson circuit locating algorithm
         from johnson import Johnson
         johnny = Johnson(graph_copy)
         johnny.find_all_circuits()
         self.loops = johnny.circuits
+        '''
 
         self.loops = [list(j) for j in set([tuple(i) for i in self.loops])]
         edges = self.edges[1]
@@ -216,6 +216,7 @@ class Graph:
         :returns: set of all closeds cycles in the graph starting and ending at start_node
 
         '''
+        #print current_path
         if len(current_path) >= 3:
             path_head_3 = current_path[-3:]
             #path_head_2 = current_path[-2:]

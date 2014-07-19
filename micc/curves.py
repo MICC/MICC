@@ -301,8 +301,11 @@ def build_matrices(edge_paths, all_paths):
 
     # Allow paths to be referenced by face
     #print edgePaths
+
     for itr in range(len(edge_paths)):
         edge_paths[itr] = dict(edge_paths[itr])
+    #print 'all_paths:',all_paths
+    #print 'edge_paths:',edge_paths
 
     ordered_paths , mapped_paths = [],[]
 
@@ -311,7 +314,7 @@ def build_matrices(edge_paths, all_paths):
         ordered_path = list(np.sort(path))
         ordered_paths.append(ordered_path)
         mapped_paths.append(dict(zip(ordered_path,range(len(path)))))
-
+    #print mapped_paths,'\n'
     #Create Matrices using details from edge paths.
     for Path, mapped_path in zip(all_paths, mapped_paths):
         #Value Matrix
