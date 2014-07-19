@@ -21,19 +21,23 @@ def invert(path):
 
 class Graph:
 
-    def addNode(self,node):
+    def add_node(self,node):
         self.nodes[node] = []
 
-    def __init__(self, curve_pair, param_edges, rep_num=1):
+    def __init__(self,edges, rep_num=1):
+        self.edges = edges
         self.rep_num = rep_num
         self.nodes = {}
         self.counter = 0
         self.loops = []
         self.gammas = []
         self.nodes_to_faces = {}
-        edges, __ =  curve_pair.edges
-        fourgons = [i[1] for i in edges if i[0] == 4  ]
-        non_fourgons = [i[1] for i in edges if i[0] != 4  ]
+        self.rep_num = 1
+
+    def compute_loops(self, n, genus):
+        edges = self.edges[0]
+        fourgons = [i[1] for i in edges if i[0] == 4]
+        non_fourgons = [i[1] for i in edges if i[0] != 4]
         keys = self.nodes_to_faces.keys()
         for i,face in enumerate(non_fourgons):
             for node in face:
@@ -50,29 +54,14 @@ class Graph:
                     self.nodes_to_faces[node].append(None)
 
                 keys = self.nodes_to_faces.keys()
-        nodes = range(curve_pair.n)
+        nodes = range(n)
 
         for i in nodes:
-            self.addNode(i)
-        self.rep_num = 1
-        self.findAllEdges(fourgons, non_fourgons, nodes, self.rep_num)
+            self.add_node(i)
+        self.find_all_edges(fourgons, non_fourgons, nodes, self.rep_num)
         import sys
         sys.stderr.write(str(self.nodes)+'\n')
         graph_copy = deepcopy(self.nodes)
-        '''
-
-        import multiprocessing as mp
-        procs = []
-        for start_node in nodes:
-            for adj_node in graph_copy[start_node]:
-                proc = mp.Process(target=self.loopDFS, args=(start_node,adj_node,graph_copy,[start_node], self.loops, self.nodes_to_faces))
-                proc.start()
-                procs.append(proc)
-            for proc in procs:
-                proc.join()
-            print self.loops
-            procs = []
-        '''
         '''
 
         for start_node in nodes:
@@ -86,7 +75,7 @@ class Graph:
         self.loops = johnny.circuits
 
         self.loops = [list(j) for j in set([tuple(i) for i in self.loops])]
-        __, edges = param_edges
+        edges = self.edges[1]
         for path in list(self.loops):
             removed = False
             if len(path) < 3:
@@ -122,9 +111,7 @@ class Graph:
 
                     for i in range(len(path)):
                         temp_path = temp_path[1:] + temp_path[:1]
-
-                        for  triple in [temp_path[i:i+3] \
-                                for i in range(len(temp_path)-2)]:
+                        for triple in [temp_path[i:i+3] for i in range(len(temp_path)-2)]:
                             if set(triple) <= set(face) and path in self.loops:
                                 if not removed:
                                     self.loops.remove(path)
@@ -132,17 +119,18 @@ class Graph:
         from curvepair import CurvePair
         for loop in list(self.loops):
             path = list(loop)
-            path_matrix = c.buildMatrices(deepcopy(edges), [path])
+            path_matrix = c.build_matrices(deepcopy(edges), [path])
             ladder = [list(path_matrix[0][0,:,1]),list(path_matrix[0][0,:,3])]
 
             gamma = CurvePair(ladder[0],ladder[1],0, 0)
-            if gamma.genus <= curve_pair.genus:
+            if gamma.genus <= genus:
                 self.gammas.append(loop)
 
-    def getValue(self,pos_to_insert, ladder, path):
+    @staticmethod
+    def get_value(pos_to_insert, ladder, path):
         return int(path[int(ladder[int(pos_to_insert)])])+1
 
-    def findAllEdges(self, fourgons, non_fourgons, alphaEdgeNodes, rep_num):
+    def find_all_edges(self, fourgons, non_fourgons, alpha_edge_nodes, rep_num):
         '''
         Determines all edges between boundary componenets and adds adjacencies between
         appropriate edges.
@@ -151,16 +139,15 @@ class Graph:
 
         #find all direct connections between non-fourgon regions
         regions = fourgons + non_fourgons
-        for alphaEdge in alphaEdgeNodes:
+        for alpha_edge in alpha_edge_nodes:
             for region in regions:
-                if alphaEdge in region:
-                    region.remove(alphaEdge)
+                if alpha_edge in region:
+                    region.remove(alpha_edge)
                     for other_edge in region:
-                        self.addAdjacency(alphaEdge, int(other_edge), rep_num)
-                    region.add(alphaEdge)
+                        self.add_adjacency(alpha_edge, int(other_edge), rep_num)
+                    region.add(alpha_edge)
 
-
-    def addAdjacency(self,node, adjacentNode, rep_num):
+    def add_adjacency(self,node, adjacent_node, rep_num):
         '''
         Adds adjacencies to a graph represented by an adjacency list.
         This is useful when we would like to replicate adjacencies
@@ -170,20 +157,21 @@ class Graph:
         :type self: Graph
         :param node: node to add adjacency
         :param type: int
-        :param adjacentNode: the adjacent node
-        :type adjacentNode: int
+        :param adjacent_node: the adjacent node
+        :type adjacent_node: int
         :param rep_num: set to 1
         :type rep_num: int
 
         '''
         for i in range(rep_num):
-            adjacencyList = self.nodes[node]
-            if Graph.count(adjacentNode, adjacencyList) < rep_num:
-                adjacencyList.append(adjacentNode)
+            adjacency_list = self.nodes[node]
+            if Graph.count(adjacent_node, adjacency_list) < rep_num:
+                adjacency_list.append(adjacent_node)
 
-            adjacencyList = self.nodes[adjacentNode]
-            if Graph.count(node, adjacencyList) < rep_num:
-                adjacencyList.append(node)
+            adjacency_list = self.nodes[adjacent_node]
+            if Graph.count(node, adjacency_list) < rep_num:
+                adjacency_list.append(node)
+
     @staticmethod
     def count(adj_node, adj_list):
         '''
@@ -206,7 +194,7 @@ class Graph:
                 count += 1
         return count
 
-    def loopDFS(self, current_node,start_node,graph,current_path,all_loops,nodes_to_faces):
+    def loop_dfs(self, current_node, start_node, graph, current_path, all_loops, nodes_to_faces):
         '''
         Recursively finds all closed cycles in a given graph that begin and end at start_node.
         As one would guess, it employs a standard depth-first search algorithm on the graph,
@@ -237,7 +225,7 @@ class Graph:
             #for edge in path_head_3:
             #	previous_three_faces.append(set(self.nodes_to_faces[edge]))
 
-            previous_three_faces =  [set(nodes_to_faces[edge]) for edge in path_head_3]
+            previous_three_faces = [set(nodes_to_faces[edge]) for edge in path_head_3]
             #previous_two_faces =  [set(self.nodes_to_faces[edge]) for edge in path_head_2]
             #print 'ptf:',previous_three_faces[0],previous_three_faces[1],previous_three_faces[2]
             #intersection_all = previous_three_faces[0]
@@ -257,7 +245,7 @@ class Graph:
                     current_path.append(adjacent_node)
                     graph[current_node].remove(adjacent_node)
                     graph[adjacent_node].remove(current_node)
-                    self.loopDFS(adjacent_node, start_node,deepcopy(graph), current_path, all_loops, nodes_to_faces)
+                    self.loop_dfs(adjacent_node, start_node, deepcopy(graph), current_path, all_loops, nodes_to_faces)
                     graph[current_node].append(adjacent_node)
                     graph[adjacent_node].append(current_node)
                     current_path.pop()

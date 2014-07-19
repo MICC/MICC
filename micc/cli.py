@@ -121,7 +121,7 @@ class CLI:
         for itr in range(len(self.curve.loops)):
 
             loop = self.curve.loops[itr]
-            matrix = self.curve.loopMatrices.values()[itr]
+            matrix = self.curve.loop_matrices.values()[itr]
             Genus = c.genus(matrix)
 
             if view=='paths' or view=='both':
