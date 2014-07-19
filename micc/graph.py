@@ -59,8 +59,6 @@ class Graph:
         for i in nodes:
             self.add_node(i)
         self.find_all_edges(fourgons, non_fourgons, nodes, self.rep_num)
-        import sys
-        sys.stderr.write(str(self.nodes)+'\n')
         graph_copy = deepcopy(self.nodes)
         '''
 
