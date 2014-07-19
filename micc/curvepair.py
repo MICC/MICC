@@ -1,5 +1,5 @@
 import numpy as np
-from curves import fixMatrixSigns, boundaryCount, genus, ladderConvert, vectorSolution, edges, Three
+from curves import fix_matrix_signs, boundary_count, genus, ladder_convert, vector_solution, edges, Three
 from graph import Graph
 
 class CurvePair:
@@ -18,24 +18,24 @@ class CurvePair:
     distance = 0
     loops = []
     '''
-    def __init__(self,topBeta,bottomBeta, dist=1, graph=1,conjectured_dist=3):
+    def __init__(self, top_beta, bottom_beta, dist=1, graph=1, conjectured_dist=3):
 
         is_ladder = lambda top, bottom: not (0 in top or 0 in bottom)
 
-        if is_ladder(topBeta,bottomBeta):
-            self.ladder = [topBeta, bottomBeta]
+        if is_ladder(top_beta,bottom_beta):
+            self.ladder = [top_beta, bottom_beta]
         else:
             self.ladder = None
         
 
 
-        if is_ladder(topBeta, bottomBeta):
-            self.beta = ladderConvert(topBeta, bottomBeta)
+        if is_ladder(top_beta, bottom_beta):
+            self.beta = ladder_convert(top_beta, bottom_beta)
             self.top = self.beta[0]
             self.bottom = self.beta[1]
         else:
-            self.top = topBeta
-            self.bottom = bottomBeta
+            self.top = top_beta
+            self.bottom = bottom_beta
             self.beta = [self.top, self.bottom]
 
         self.n = len(self.top)
@@ -46,36 +46,38 @@ class CurvePair:
         self.matrix[0,:,2] = range(1,self.n) +[0]
         self.matrix[0,:,3] = self.bottom
 
-        self.matrix = fixMatrixSigns(self.matrix)
+        self.matrix = fix_matrix_signs(self.matrix)
 
-        self.boundaries = boundaryCount(self.matrix)
+        self.boundaries = boundary_count(self.matrix)
         self.genus = genus(self.matrix)
         self.edges = edges(self.matrix)
 
-        self.solution = vectorSolution(self.edges[0])
+        self.solution = vector_solution(self.edges[0])
 
 
         if graph is 1:
-            self.loops = Graph(self, self.edges, rep_num=conjectured_dist-1).gammas
+            graph = Graph(self.edges, rep_num=conjectured_dist-2)
+            graph.compute_loops(self.n, self.genus)
+            self.loops = graph.gammas
         else:
             self.loops = []
 
         if dist is 1:
             #from sys import stderr
             #stderr.write(str(self.loops)+'\n')
-            self.distance, self.loopMatrices = self.compute_distance(self.matrix, self.loops)
+            self.distance, self.loop_matrices = self.compute_distance(self.matrix, self.loops)
         else:
             self.distance = None
 
     def __repr__(self):
         return self.ladder[0]+'\n'+self.ladder[1]+'\n'
 
-    def compute_distance(self, M, allPaths):
+    def compute_distance(self, M, all_paths):
         '''
         :param M: the matrix
         :type M:
-        :param allPaths:
-        :type allPaths:
+        :param all_paths:
+        :type all_paths:
         :returns: dist: the distance if three/four, or 'Higher' if dist is > 4.
 
         Computes the distance between the two curves embedded in the matrix.
@@ -85,21 +87,21 @@ class CurvePair:
 
         '''
 
-        distIsThree, Lib = Three(M, allPaths)
-        #stderr.write(str(Lib)+'\n')
+        dist_is_three, lib = Three(M, all_paths)
+        #stderr.write(str(lib)+'\n')
 
-        dist = 3 if distIsThree  else 'at least 4!'
-        return dist, Lib
+        dist = 3 if dist_is_three  else 'at least 4!'
         '''
         from sys import stderr
         if dist == 3:
-            return dist, Lib
+            return dist, lib
         else:
             geodesic_distances = []
-            for k,matrix in Lib.iteritems():
+            for k,matrix in lib.iteritems():
                 #stderr.write(str(matrix))
                 cc_distance = CurvePair(matrix[0, :, 1], matrix[0, :, 3])
                 stderr.write(str(k)+": "+str(cc_distance.distance)+'\n')
                 geodesic_distances.append(cc_distance.distance)
-            return min(set(geodesic_distances)) + 1, Lib
+            return min(set(geodesic_distances)) + 1, lib
         '''
+        return dist, lib
