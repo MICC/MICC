@@ -32,7 +32,9 @@ Example useage of MICC:
 
 Documentation
 -------------
-TODO
+MICC's key interface is an abstract representation of a pair of curves *v*,*w* on a surace *S* of genus *g*. 
+We present the details and nuances in our full publication <link>, but here is a brief summary:
+
 
 License
 -------
