@@ -32,9 +32,24 @@ Example useage of MICC:
 
 Documentation
 -------------
-MICC's key interface is an abstract representation of a pair of curves *v*,*w* on a surace *S* of genus *g*. 
-We present the details and nuances in our full publication <link>, but here is a brief summary:
+MICC's key interface is an abstract representation of a pair of curves *a*,*b* on a surace *S* of genus *g*. 
+We present the details and nuances in our full publication <link>.
 
+.. image:: img/Birman-matrix-and-ladder.png
+   :scale: 75 %
+   :align: middle
+
+Define one of the two curves as a reference curve; in the above case, we choose *a* as our reference curve.
+Aftering arbitrarily labeling  the arcs of *b* created by the removal of *a*, as shown above, read off the 
+chosen identifications in the order they appear on the each side of *a* during an oriented traversal. Upon 
+doing so, you will have two sequences of integer identifications. In the above example, they look like:
+.. code-block:: python
+
+    [1, 4, 3, 4, 1, 6]
+    [6, 5, 2, 3, 2, 5]
+    
+These two lists are the input to the CurvePair object, the primary interface layer for MICC. It is highly recommended 
+that users restrict their attention to this object alone.
 
 License
 -------
