@@ -1,6 +1,6 @@
 from copy import deepcopy
 import curves as c
-
+from sys import stderr
 
 def shift(path):
     '''
@@ -24,7 +24,7 @@ class Graph:
     def add_node(self, node):
         self.nodes[node] = []
 
-    def __init__(self, edges, rep_num=1):
+    def __init__(self, edges, rep_num=2):
         self.edges = edges
         self.rep_num = rep_num
         self.nodes = {}
@@ -246,6 +246,7 @@ class Graph:
         :returns: set of all closeds cycles in the graph starting and ending at start_node
 
         '''
+        stderr.write(str(current_path)+'\n')
         if len(current_path) >= 3:
             path_head_3 = current_path[-3:]
             #path_head_2 = current_path[-2:]
