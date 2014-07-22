@@ -1,18 +1,13 @@
 import unittest
-from micc.curvepair import CurvePair
+from micc.curves import CurvePair
 import numpy as np
 from sys import stderr
 
 class DistanceTests(unittest.TestCase):
     '''
-    def test_end_all_tests(self):
-        test = CurvePair([1,2,3,4,12,10,14,15,9,13,11,12,4,5,6,7,21,22,23,24,16,17,18,19],[24,1,2,3,13,9,15,16,8,14,10,11,5,6,7,8,20,21,22,23,17,18,19,20])
-        self.assertEqual(test.distance, 3)
-
     def test_1(self):
         test = CurvePair([1,2,3,4,12,10,14,15,9,13,11,12,4,5,6,7,21,22,23,24,16,17,18,19],[24,1,2,3,13,9,15,16,8,14,10,11,5,6,7,8,20,21,22,23,17,18,19,20])
         self.assertEqual(test.distance,3)
-
     '''
     def test_2(self):
         test = CurvePair([6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 1, 2, 3, 4, 17, 5], [1, 2, 12, 13, 14, 15, 16, 5, 6, 7, 8, 9, 10, 11, 12, 3, 4])
@@ -42,7 +37,6 @@ class DistanceTests(unittest.TestCase):
         top = [5,6,7,8,3,4,11,0,1,10,11,6]
         bot = [7,8,9,4,5,0,1,2,3,2,9,10]
         test = CurvePair(top,bot)
-        stderr.write(str(test.loops)+'\n')
         self.assertEqual(test.distance, 4)
 
     def test_hempel(self):

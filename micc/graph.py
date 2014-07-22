@@ -54,14 +54,17 @@ class Graph:
                     self.nodes_to_faces[node].append(None)
 
                 keys = self.nodes_to_faces.keys()
+        self.nodes_to_faces = {int(k): tuple(v) for k,v in self.nodes_to_faces.iteritems()}
         nodes = range(n)
 
         for i in nodes:
             self.add_node(i)
         self.find_all_edges(fourgons, non_fourgons, nodes, self.rep_num)
         graph_copy = deepcopy(self.nodes)
+        #graph_copy = {i : set(j) for i,j in self.nodes.iteritems()}
 
         for start_node in nodes:
+            #self.loops.extend(self.iter_loop_dfs(graph_copy, start_node, start_node))
             for adj_node in graph_copy[start_node]:
                 self.loop_dfs(start_node,adj_node,graph_copy,[start_node],self.loops, self.nodes_to_faces)
         '''
@@ -71,7 +74,7 @@ class Graph:
         johnny.find_all_circuits()
         self.loops = johnny.circuits
         '''
-
+        print len(self.loops)
         self.loops = [list(j) for j in set([tuple(i) for i in self.loops])]
         edges = self.edges[1]
         for path in list(self.loops):
@@ -114,13 +117,13 @@ class Graph:
                                 if not removed:
                                     self.loops.remove(path)
                                     removed = True
-        from curvepair import CurvePair
+        #from curvepair import CurvePair
         for loop in list(self.loops):
             path = list(loop)
             path_matrix = c.build_matrices(deepcopy(edges), [path])
             ladder = [list(path_matrix[0][0,:,1]),list(path_matrix[0][0,:,3])]
 
-            gamma = CurvePair(ladder[0],ladder[1],0, 0)
+            gamma = c.CurvePair(ladder[0],ladder[1],0, 0)
             if gamma.genus <= genus:
                 self.gammas.append(loop)
 
@@ -192,6 +195,33 @@ class Graph:
                 count += 1
         return count
 
+    def iter_loop_dfs(self, graph, start, goal):
+        loops = []
+        stack = [(start, [start])]
+        while stack:
+            vertex, path = stack.pop()
+            in_path = set(path)
+            for next in set(graph[vertex]):
+                if next in in_path:
+                    if len(path) >= 3:
+                        if self.faces_share_edges(self.nodes_to_faces, path):
+                            continue
+                    if next == goal:
+                        loops.append(list(path))
+                    else:
+                        continue
+                else:
+                    stack.append((next, list(path + [next])))
+        return loops
+
+    def faces_share_edges(self,nodes_to_faces, path):
+        path_head_3 = path[-3:]
+        previous_three_faces = [nodes_to_faces[edge] for edge in path_head_3]
+        previous_three_faces = [set(i) for i in previous_three_faces]
+        intersection_all = set.intersection(*previous_three_faces)
+        return len(intersection_all) == 2
+
+
     def loop_dfs(self, current_node, start_node, graph, current_path, all_loops, nodes_to_faces):
         '''
         Recursively finds all closed cycles in a given graph that begin and end at start_node.
@@ -216,7 +246,6 @@ class Graph:
         :returns: set of all closeds cycles in the graph starting and ending at start_node
 
         '''
-        #print current_path
         if len(current_path) >= 3:
             path_head_3 = current_path[-3:]
             #path_head_2 = current_path[-2:]
@@ -244,7 +273,7 @@ class Graph:
                     current_path.append(adjacent_node)
                     graph[current_node].remove(adjacent_node)
                     graph[adjacent_node].remove(current_node)
-                    self.loop_dfs(adjacent_node, start_node, deepcopy(graph), current_path, all_loops, nodes_to_faces)
+                    self.loop_dfs(adjacent_node, start_node, graph, current_path, all_loops, nodes_to_faces)
                     graph[current_node].append(adjacent_node)
                     graph[adjacent_node].append(current_node)
                     current_path.pop()
