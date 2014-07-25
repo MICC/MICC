@@ -1004,12 +1004,15 @@ class CurvePair:
 
         if dist is 1:
             graph = Graph(self.edges, rep_num=conjectured_dist-2)
+            print 'makin some loops'
             graph.compute_loops(self.n, self.genus)
+            print 'got some loops'
             self.loops = graph.gammas
-
             #from sys import stderr
             #stderr.write(str(self.loops)+'\n')
+            print 'poop'
             self.distance, self.loop_matrices = self.compute_distance(self.matrix, self.loops)
+            print 'hadoop'
         else:
             self.distance = None
 
