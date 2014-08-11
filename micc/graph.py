@@ -2,6 +2,7 @@ from copy import deepcopy
 import curves as c
 from sys import stderr
 
+
 def shift(path):
     '''
     init
@@ -17,6 +18,17 @@ def invert(path):
 
     '''
     return shift(path[::-1])
+
+
+def contains(small, big):
+    print type(small), type(big)
+    for i in xrange(len(big)-len(small)+1):
+        for j in xrange(len(small)):
+            if big[i+j] != small[j]:
+                break
+        else:
+            return i, i+len(small)
+    return False
 
 
 class Graph:
@@ -74,12 +86,14 @@ class Graph:
         johnny.find_all_circuits()
         self.loops = johnny.circuits
         '''
-        print len(self.loops)
-        self.loops = [list(j) for j in set([tuple(i) for i in self.loops])]
+        #print len(self.loops)
+        self.loops = [j for j in set([tuple(i) for i in self.loops])]
         edges = self.edges[1]
         for path in list(self.loops):
+            temp_len = len(path)
+            in_loops = path in set(self.loops)
             removed = False
-            if len(path) < 3:
+            if temp_len < 3:
                 if not removed:
                     self.loops.remove(path)
                     removed = True
@@ -92,35 +106,48 @@ class Graph:
             # Trial: remove all duplicates
             else:
                 temp_path = list(path)
+                #temp_len = len(temp_path)
                 temp_path = shift(temp_path)
                 for face in non_fourgons:
                     for triple in [temp_path[i:i+3] \
-                            for i in range(len(temp_path)-2)]:
-                        if set(triple) <= set(face):
+                            for i in xrange(temp_len-2)]:
+                        if set(triple) <= face:
                             if not removed:
                                 self.loops.remove(path)
                                 removed = True
+                                break
+                    if removed:
+                        break
+
 
                     temp_path = invert(temp_path)
 
                     for triple in [temp_path[i:i+3] \
-                            for i in range(len(temp_path)-2)]:
-                        if set(triple) <= set(face):
+                            for i in xrange(temp_len-2)]:
+                        if set(triple) <= face:
                             if not removed:
                                 self.loops.remove(path)
                                 removed = True
+                                break
 
-                    for i in range(len(path)):
+                    for i in xrange(temp_len):
                         temp_path = temp_path[1:] + temp_path[:1]
-                        for triple in [temp_path[i:i+3] for i in range(len(temp_path)-2)]:
-                            if set(triple) <= set(face) and path in self.loops:
+                        for triple in (temp_path[i:i+3] for i in xrange(temp_len-2)):
+                            boolA = set(triple) <= face
+
+                            #boolA = contains(triple,face)
+                            #if set(triple) <= set(face) and path in self.loops:
+                            if boolA and in_loops:
                                 if not removed:
                                     self.loops.remove(path)
                                     removed = True
-        #from curvepair import CurvePair
+                                    break
+                        if removed:
+                            break
+
         for loop in list(self.loops):
             path = list(loop)
-            path_matrix = c.build_matrices(deepcopy(edges), [path])
+            path_matrix = c.build_matrices(edges, [path])
             ladder = [list(path_matrix[0][0,:,1]),list(path_matrix[0][0,:,3])]
 
             gamma = c.CurvePair(ladder[0],ladder[1],0, 0)
@@ -188,12 +215,13 @@ class Graph:
         :returns: number of edges from the adjacent node to the original node
 
 
-        '''
         count = 0
         for i in adj_list:
             if i == adj_node:
                 count += 1
         return count
+        '''
+        return adj_list.count(adj_node)
 
     def iter_loop_dfs(self, graph, start, goal):
         loops = []
@@ -246,21 +274,10 @@ class Graph:
         :returns: set of all closeds cycles in the graph starting and ending at start_node
 
         '''
-        stderr.write(str(current_path)+'\n')
         if len(current_path) >= 3:
             path_head_3 = current_path[-3:]
-            #path_head_2 = current_path[-2:]
-            #previous_three_faces = []
-            #for edge in path_head_3:
-            #	previous_three_faces.append(set(self.nodes_to_faces[edge]))
-
             previous_three_faces = [set(nodes_to_faces[edge]) for edge in path_head_3]
-            #previous_two_faces =  [set(self.nodes_to_faces[edge]) for edge in path_head_2]
-            #print 'ptf:',previous_three_faces[0],previous_three_faces[1],previous_three_faces[2]
-            #intersection_all = previous_three_faces[0]
-            #intersection_all = intersection_all.intersection(previous_three_faces[1])
-            #intersection_all = intersection_all.intersection(previous_three_faces[2])
-            intersection_all = set.intersection(*previous_three_faces) #old non numba
+            intersection_all = set.intersection(*previous_three_faces)
             if len(intersection_all) == 2:
                 return
 
