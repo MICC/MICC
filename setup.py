@@ -20,7 +20,7 @@ setup(
 '''
 
 setup(name='MICC',
-      version='0.1.21',
+      version='0.1.3',
       author='Matt Morse, Paul Glenn',
       author_email='mjmorse@buffalo.edu, paulglen@berkeley.edu',
       packages=['micc', 'micc.tests'],
