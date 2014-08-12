@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import curves as c
-from curvepair import CurvePair
+from curves import CurvePair
 
 class CLI:
 

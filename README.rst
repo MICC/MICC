@@ -32,7 +32,8 @@ Example useage of MICC:
 
 Documentation
 -------------
-MICC's key interface is an abstract representation of a pair of curves *a*,*b* on a surace *S* of genus *g*. 
+
+MICC's key interface is an abstract representation of a pair of curves *a*,*b* on a surace *S* of genus *g*.
 We present the details and nuances in our full publication <link>.
 
 .. image:: img/Birman-matrix-and-ladder.png

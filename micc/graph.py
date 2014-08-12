@@ -1,5 +1,6 @@
 from copy import deepcopy
 import curves as c
+from sys import stderr
 
 
 def shift(path):
@@ -19,12 +20,23 @@ def invert(path):
     return shift(path[::-1])
 
 
+def contains(small, big):
+    print type(small), type(big)
+    for i in xrange(len(big)-len(small)+1):
+        for j in xrange(len(small)):
+            if big[i+j] != small[j]:
+                break
+        else:
+            return i, i+len(small)
+    return False
+
+
 class Graph:
 
-    def add_node(self,node):
+    def add_node(self, node):
         self.nodes[node] = []
 
-    def __init__(self,edges, rep_num=1):
+    def __init__(self, edges, rep_num=2):
         self.edges = edges
         self.rep_num = rep_num
         self.nodes = {}
@@ -32,7 +44,7 @@ class Graph:
         self.loops = []
         self.gammas = []
         self.nodes_to_faces = {}
-        self.rep_num = 1
+        self.rep_num = rep_num
 
     def compute_loops(self, n, genus):
         edges = self.edges[0]
@@ -54,29 +66,38 @@ class Graph:
                     self.nodes_to_faces[node].append(None)
 
                 keys = self.nodes_to_faces.keys()
+        self.nodes_to_faces = {int(k): tuple(v) for k,v in self.nodes_to_faces.iteritems()}
         nodes = range(n)
 
         for i in nodes:
             self.add_node(i)
         self.find_all_edges(fourgons, non_fourgons, nodes, self.rep_num)
         graph_copy = deepcopy(self.nodes)
-        '''
-
+        #graph_copy = {i : set(j) for i,j in self.nodes.iteritems()}
+        #for k,v in graph_copy.iteritems():
+        #    stderr.write(str(k)+": "+str(v)+'\n')
+        #raw_input()
         for start_node in nodes:
+            #self.loops.extend(self.iter_loop_dfs(graph_copy, start_node, start_node))
             for adj_node in graph_copy[start_node]:
-                self.loopDFS(start_node,adj_node,graph_copy,[start_node],self.loops, self.nodes_to_faces)
+                self.loops += self.loop_dfs(start_node,adj_node,graph_copy,[start_node], self.nodes_to_faces)
         '''
         #Johnson circuit locating algorithm
         from johnson import Johnson
         johnny = Johnson(graph_copy)
         johnny.find_all_circuits()
         self.loops = johnny.circuits
+        '''
+        #print len(self.loops)
+        from itertools import chain
 
-        self.loops = [list(j) for j in set([tuple(i) for i in self.loops])]
+        self.loops = [j for j in set([tuple(i) for i in self.loops])]
         edges = self.edges[1]
         for path in list(self.loops):
+            temp_len = len(path)
+            #in_loops = path in set(self.loops)
             removed = False
-            if len(path) < 3:
+            if temp_len < 3:
                 if not removed:
                     self.loops.remove(path)
                     removed = True
@@ -89,38 +110,51 @@ class Graph:
             # Trial: remove all duplicates
             else:
                 temp_path = list(path)
+                #temp_len = len(temp_path)
                 temp_path = shift(temp_path)
                 for face in non_fourgons:
                     for triple in [temp_path[i:i+3] \
-                            for i in range(len(temp_path)-2)]:
-                        if set(triple) <= set(face):
+                            for i in xrange(temp_len-2)]:
+                        if set(triple) <= face:
                             if not removed:
                                 self.loops.remove(path)
                                 removed = True
+                                break
+                    if removed:
+                        break
+
 
                     temp_path = invert(temp_path)
 
                     for triple in [temp_path[i:i+3] \
-                            for i in range(len(temp_path)-2)]:
-                        if set(triple) <= set(face):
+                            for i in xrange(temp_len-2)]:
+                        if set(triple) <= face:
                             if not removed:
                                 self.loops.remove(path)
                                 removed = True
+                                break
 
-                    for i in range(len(path)):
+                    for i in xrange(temp_len):
                         temp_path = temp_path[1:] + temp_path[:1]
-                        for triple in [temp_path[i:i+3] for i in range(len(temp_path)-2)]:
-                            if set(triple) <= set(face) and path in self.loops:
+                        for triple in (temp_path[i:i+3] for i in xrange(temp_len-2)):
+                            boolA = set(triple) <= face
+
+                            #boolA = contains(triple,face)
+                            #if set(triple) <= set(face) and path in self.loops:
+                            if boolA :
                                 if not removed:
                                     self.loops.remove(path)
                                     removed = True
-        from curvepair import CurvePair
+                                    break
+                        if removed:
+                            break
+
         for loop in list(self.loops):
             path = list(loop)
-            path_matrix = c.build_matrices(deepcopy(edges), [path])
+            path_matrix = c.build_matrices(edges, [path])
             ladder = [list(path_matrix[0][0,:,1]),list(path_matrix[0][0,:,3])]
 
-            gamma = CurvePair(ladder[0],ladder[1],0, 0)
+            gamma = c.CurvePair(ladder[0],ladder[1],0, 0)
             if gamma.genus <= genus:
                 self.gammas.append(loop)
 
@@ -185,14 +219,42 @@ class Graph:
         :returns: number of edges from the adjacent node to the original node
 
 
-        '''
         count = 0
         for i in adj_list:
             if i == adj_node:
                 count += 1
         return count
+        '''
+        return adj_list.count(adj_node)
 
-    def loop_dfs(self, current_node, start_node, graph, current_path, all_loops, nodes_to_faces):
+    def iter_loop_dfs(self, graph, start, goal):
+        loops = []
+        stack = [(start, [start])]
+        while stack:
+            vertex, path = stack.pop()
+            in_path = set(path)
+            for next in set(graph[vertex]):
+                if next in in_path:
+                    if len(path) >= 3:
+                        if self.faces_share_edges(self.nodes_to_faces, path):
+                            continue
+                    if next == goal:
+                        loops.append(list(path))
+                    else:
+                        continue
+                else:
+                    stack.append((next, list(path + [next])))
+        return loops
+
+    def faces_share_edges(self,nodes_to_faces, path):
+        path_head_3 = path[-3:]
+        previous_three_faces = [nodes_to_faces[edge] for edge in path_head_3]
+        previous_three_faces = [set(i) for i in previous_three_faces]
+        intersection_all = set.intersection(*previous_three_faces)
+        return len(intersection_all) == 2
+
+
+    def loop_dfs(self, current_node, start_node, graph, current_path, nodes_to_faces):
         '''
         Recursively finds all closed cycles in a given graph that begin and end at start_node.
         As one would guess, it employs a standard depth-first search algorithm on the graph,
@@ -216,38 +278,33 @@ class Graph:
         :returns: set of all closeds cycles in the graph starting and ending at start_node
 
         '''
+
+        #stderr.write(str(current_path)+'\n')
+        #stderr.write(str([nodes_to_faces[i] for i in current_path])+'\n')
         if len(current_path) >= 3:
             path_head_3 = current_path[-3:]
-            #path_head_2 = current_path[-2:]
-            #previous_three_faces = []
-            #for edge in path_head_3:
-            #	previous_three_faces.append(set(self.nodes_to_faces[edge]))
-
             previous_three_faces = [set(nodes_to_faces[edge]) for edge in path_head_3]
-            #previous_two_faces =  [set(self.nodes_to_faces[edge]) for edge in path_head_2]
-            #print 'ptf:',previous_three_faces[0],previous_three_faces[1],previous_three_faces[2]
-            #intersection_all = previous_three_faces[0]
-            #intersection_all = intersection_all.intersection(previous_three_faces[1])
-            #intersection_all = intersection_all.intersection(previous_three_faces[2])
-            intersection_all = set.intersection(*previous_three_faces) #old non numba
+            intersection_all = set.intersection(*previous_three_faces)
             if len(intersection_all) == 2:
-                return
+                return []
 
         if current_node == start_node:
-            all_loops.append(shift(list(current_path)))
-            return
+            #stderr.write("Found one! \n")
+            #all_loops.append(shift(list(current_path)))
+            return [shift(list(current_path))]
 
         else:
+            loops = []
             for adjacent_node in set(graph[current_node]):
                 if Graph.count(adjacent_node, current_path) < self.rep_num:
                     current_path.append(adjacent_node)
                     graph[current_node].remove(adjacent_node)
                     graph[adjacent_node].remove(current_node)
-                    self.loop_dfs(adjacent_node, start_node, deepcopy(graph), current_path, all_loops, nodes_to_faces)
+                    loops += list(self.loop_dfs(adjacent_node, start_node, graph, current_path, nodes_to_faces))
                     graph[current_node].append(adjacent_node)
                     graph[adjacent_node].append(current_node)
                     current_path.pop()
-
+            return loops
 '''
 for i in range(len(path)):
     index = path[i]
