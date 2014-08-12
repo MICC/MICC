@@ -45,6 +45,7 @@ def fix_matrix_signs(M):
     return M
 
 
+
 def concatenate_matrix(M1, M2):
     '''
     :param M1: First matrix to combine
@@ -96,18 +97,15 @@ def concatenate_matrix(M1, M2):
 ## Most are helpers for findAllPaths below.
 
 
+
 def visited(curr, face, path):
-    '''
+    """
+
     :param curr:
-    :type curr:
     :param face:
-    :type face:
     :param path:
-    :type path:
-
-
-    '''
-
+    :return:
+    """
     my_face = list(face)
     my_face.remove(curr)
     v = 0
@@ -192,6 +190,7 @@ def path_finished_double(edge, face, path):
         C = 0
     #meeting = lambda e1, e2, face: e1 in face and e2 in face
     return C
+
 
 
 def find_new_paths(current_path, my_face, faces, all_paths, path_function):
@@ -285,6 +284,7 @@ def find_all_paths(faces):
 
 ## Now that we have the paths, they need to be
 ## re- indexed so that matrices can be built from them.
+
 def build_matrices(edge_paths, all_paths):
     '''
     :param edge_paths: list of face boundary orientations
@@ -301,8 +301,11 @@ def build_matrices(edge_paths, all_paths):
 
     # Allow paths to be referenced by face
     #print edgePaths
+
     for itr in range(len(edge_paths)):
         edge_paths[itr] = dict(edge_paths[itr])
+    #print 'all_paths:',all_paths
+    #print 'edge_paths:',edge_paths
 
     ordered_paths , mapped_paths = [],[]
 
@@ -311,7 +314,7 @@ def build_matrices(edge_paths, all_paths):
         ordered_path = list(np.sort(path))
         ordered_paths.append(ordered_path)
         mapped_paths.append(dict(zip(ordered_path,range(len(path)))))
-
+    #print mapped_paths,'\n'
     #Create Matrices using details from edge paths.
     for Path, mapped_path in zip(all_paths, mapped_paths):
         #Value Matrix
@@ -330,7 +333,7 @@ def build_matrices(edge_paths, all_paths):
         for vertex in Path:
             flag = False
             for path in edge_paths:
-                keys = path.keys()
+                keys = set(path.keys())
                 if vertex in keys and old_vertex in keys:
                     past_edges[vertex] = path[vertex]
                     flag = True
@@ -359,6 +362,7 @@ def build_matrices(edge_paths, all_paths):
     # End while
 
     return master_list
+
 
 
 def face_parse(alpha_edges):
@@ -396,9 +400,7 @@ def connected(P1, P2):
 
     S1 = set(P1)
     S2 = set(P2)
-    if S1.isdisjoint(S2):
-        return 0
-    elif S1.issubset(S2) and S1.issuperset(S2):
+    if S1.isdisjoint(S2) or (S1.issubset(S2) and S1.issuperset(S2)):
         return 0
     else:
         return 1
@@ -413,10 +415,7 @@ def share_edge(path1, path2):
     :returns:
 
     '''
-    share = 0
     if not set(path1).isdisjoint(path2):
-        share = 1
-    if share == 0:
         return 0, -1
     else:
         intersection_set = set(path1) & set(path2)
@@ -470,6 +469,7 @@ def faces_share_two_edges(faces):
     return distance_three_flag
 
 
+
 def edges(M):
     '''
     :param M: the matrix representing a pair of curves
@@ -484,16 +484,17 @@ def edges(M):
 
     num_rows, num_cols = M.shape[1:3] #num_rows, num_cols
 
-    old_vertices = [ ] ##list of previous paths
+    old_vertices = [] ##list of previous paths
     bigonFlag = 0
     # Bigons are unwanted structures.
-    Paths = [ ]  # alpha - edge paths.
+    Paths = []  # alpha - edge paths.
     facesTemp = dict()
     for i,j in product(range(num_rows),range(num_cols)):
         #Set of edges associated with face
         tr = 1
         face = set()
-        if faces==num_rows: break #upper bound on possible no. faces
+        if faces == num_rows:
+            break  # upper bound on possible no. faces
         # Start position in matrix: returning to this means a face has been
         # enclosed
         io =i
@@ -510,14 +511,13 @@ def edges(M):
             gval = int(M[0,i,j]);
             #current value at index gives next vertex/row
             #value check
-            arr1 = np.where(M[0,gval,:] == i%num_rows)
-            arr2 = np.where(M[1,gval,:] != M[1,i,j]) #sign check
-
+            arr1 = M[0,gval,:] == i%num_rows
+            arr2 = M[1,gval,:] != M[1,i,j] #sign check
             i_next = gval
             alpha = (M[0,i,0]+1)%num_rows
             i= i_next
-
-            new = np.intersect1d(arr1[0],arr2[0],assume_unique=True)
+            new = np.where(arr1 & arr2)[0]
+            #new = np.intersect1d(arr1[0],arr2[0],assume_unique=True)
             #ENS: val and sign correct
             ind = np.where(new%2==j%2) #ENS: beta->beta, alpha->alpha
             j_next = (int(new[ind])+1)%num_cols #Always move clockwise
@@ -531,18 +531,12 @@ def edges(M):
             alpha_new =( M[0,i,0]+1) % num_rows;
             shift = (alpha_new - alpha)
 
-            if shift==1 and j%2 == 1:
+            if (shift==1 and j%2 == 1) or (shift == 1-num_rows and alpha_new==0 and j%2==1):
                 face.add(alpha_new)
                 pathTemp.append((alpha_new,(j)%num_cols))
-            elif shift==-1 and j%2==1:
+            elif (shift==-1 and j%2==1 ) or (shift == num_rows-1 and alpha ==0  and j%2==1):
                 face.add(alpha)
                 pathTemp.append((alpha,(j)%num_cols))
-            elif shift == num_rows-1 and alpha ==0  and j%2==1: #
-                face.add(alpha)
-                pathTemp.append((alpha,(j)%num_cols))
-            elif shift == 1-num_rows and alpha_new==0 and j%2==1: #
-                face.add(alpha_new)
-                pathTemp.append((alpha_new,(j)%num_cols))
 
             if (i,j)==(io,jo):
                 facesTemp[edges] = facesTemp.get(edges,0) +1
@@ -655,13 +649,12 @@ def genus(M, euler=0, boundaries = 0):
 
     return returnVal[euler]
 
-
-def testCollection(matrixList, originalGenus):
+def test_collection(matrix_list, original_genus):
     '''
-    :param matrixList:
-    :type matrixList: list of numpy.array(dtype=float64)
-    :param originalGenus:
-    :type originalGenus:
+    :param matrix_list:
+    :typematrix_listt: list of numpy.array(dtype=float64)
+    :param original_genus:
+    :typeoriginal_genuss:
     :returns: list of booleans and a dictionary containing the matrices without bigons.
 
     Test a collection of matrices to see if they fill a given genus.
@@ -670,7 +663,7 @@ def testCollection(matrixList, originalGenus):
     genusCollection = []
     index = 0
     matrixLibrary = dict()
-    for M in matrixList:
+    for M in matrix_list:
 
         bigon = boundary_count(M)[1]
         Genus = genus(M)
@@ -681,7 +674,7 @@ def testCollection(matrixList, originalGenus):
 
         genusCollection.append(Genus)
     # Test if all fill and thus distance g.t. 3
-    test = [Genus == originalGenus for Genus in genusCollection]
+    test = [Genus == original_genus for Genus in genusCollection]
     return test, matrixLibrary
 
 def fourgonTest(F4, Fn):
@@ -699,7 +692,7 @@ def fourgonTest(F4, Fn):
             if len(islandFace[1] & bridgeFace[1]) >= 2: return True
     return False
 
-def Three(M, allPaths, ext=0):
+def Three(M, allPaths, ext=0, originalGenus = False, boundaries = False, edges = False):
     '''
     :param M:
     :type M:
@@ -713,11 +706,18 @@ def Three(M, allPaths, ext=0):
 
     three, matrixLibrary = 0, dict()
 
+    if not originalGenus:
+        originalGenus = genus(M)
+    if not boundaries:
+        F0, bigon = boundary_count(M)
+    else:
+        F0, bigon = boundaries
+    if not edges:
+        #Calculate face alpha edges and alpha edge paths
+        Faces, edgePaths = edges(M)
+    else:
+        Faces, edgePaths = edges
 
-    F0, bigon = boundary_count(M)
-    originalGenus = genus(M)
-    #Calculate face alpha edges and alpha edge paths
-    Faces, edgePaths = edges(M)
     Bridges, Islands, lengthCheck = face_parse(Faces)
 
     # Bridges are faces bounded by four edges.
@@ -774,7 +774,7 @@ def Three(M, allPaths, ext=0):
     #Build paths into curves and intersect with alpha
     matrixList = build_matrices(edgePaths, allPaths)
 
-    genusTest, matrixLibrary = testCollection(matrixList,originalGenus)
+    genusTest, matrixLibrary = test_collection(matrixList, originalGenus)
     if three != 1:
         three = 1 if False in genusTest else 0
 
@@ -888,7 +888,7 @@ def matrix_is_multicurve(beta):
 def test_permutations(original_ladder):
     distance4 = []
     distance3 = []
-    from curvepair import CurvePair
+    #from curvepair import CurvePair
     ladder = deepcopy(original_ladder)
     if not original_ladder is None:
         for i in range(len(ladder[0])):
@@ -929,7 +929,7 @@ def test_perms(original_ladder):
     distance4 = []
     distance3 = []
     ladder_to_perm = deepcopy(original_ladder)
-    from curvepair import CurvePair
+    #from curvepair import CurvePair
     if not original_ladder is None:
         for i in range(len(ladder_to_perm[0])):
             if not ladder_is_multicurve(*ladder_to_perm):
@@ -946,3 +946,117 @@ def test_perms(original_ladder):
             first_vertex = ladder_to_perm[0].pop(0)
             ladder_to_perm[0].append(first_vertex)
     return distance3, distance4
+
+
+
+
+
+
+#import numpy as np
+#from curves import fix_matrix_signs, boundary_count, genus, ladder_convert, vector_solution, edges, Three
+from graph import Graph
+
+
+class CurvePair:
+    '''
+    ladder = None
+    beta = None
+    top = []
+    bottom = []
+    n = 0
+    matrix = None
+    boundaries = None
+    genus = None
+    edges = None
+
+    solution = None
+    distance = 0
+    loops = []
+    '''
+    def __init__(self, top_beta, bottom_beta, dist=1, conjectured_dist=3,recursive=False):
+
+        is_ladder = lambda top, bottom: not (0 in top or 0 in bottom)
+
+        if is_ladder(top_beta, bottom_beta):
+            self.ladder = [top_beta, bottom_beta]
+        else:
+            self.ladder = None
+
+        if is_ladder(top_beta, bottom_beta):
+            self.beta = ladder_convert(top_beta, bottom_beta)
+            self.top = self.beta[0]
+            self.bottom = self.beta[1]
+        else:
+            self.top = top_beta
+            self.bottom = bottom_beta
+            self.beta = [self.top, self.bottom]
+
+        self.n = len(self.top)
+
+        self.matrix = np.zeros((2,self.n,4))
+        self.matrix[0,:,0] = [self.n-1] + range(self.n-1)
+        self.matrix[0,:,1] = self.top
+        self.matrix[0,:,2] = range(1,self.n) +[0]
+        self.matrix[0,:,3] = self.bottom
+
+        self.matrix = fix_matrix_signs(self.matrix)
+
+        self.boundaries = boundary_count(self.matrix)
+        self.genus = genus(self.matrix)
+        self.edges = edges(self.matrix)
+
+        self.solution = vector_solution(self.edges[0])
+
+        self.loops = []
+
+        if dist is 1:
+            graph = Graph(self.edges, rep_num=conjectured_dist-2)
+            graph.compute_loops(self.n, self.genus)
+            self.loops = graph.gammas
+            #from sys import stderr
+            #stderr.write(str(self.loops)+'\n')
+            self.distance, self.loop_matrices = self.compute_distance(self.matrix, self.loops, recursive=recursive)
+        else:
+            self.distance = None
+
+    def __repr__(self):
+        return self.ladder[0]+'\n'+self.ladder[1]+'\n'
+
+    def compute_distance(self, M, all_paths,recursive=True):
+        '''
+        :param M: the matrix
+        :type M:
+        :param all_paths:
+        :type all_paths:
+        :returns: dist: the distance if three/four, or 'Higher' if dist is > 4.
+
+        Computes the distance between the two curves embedded in the matrix.
+        If this distance is three, tries to use simple paths to extend the distance
+        in a different direction. If this fails, simply returns three;
+        else it prints a curve that is distance four from alpha.
+
+        '''
+
+        dist_is_three, lib = Three(M, all_paths, originalGenus=self.genus, boundaries=self.boundaries, edges=self.edges)
+        dist = 3 if dist_is_three  else 'at least 4!'
+        if dist == 3:
+            return dist, lib
+        else:
+            if recursive:
+                geodesic_distances = []
+                for k, matrix in lib.iteritems():
+                    #stderr.write(str(matrix))
+                    if np.array_equal(matrix, self.matrix):
+                        continue
+                    elif self.solution == CurvePair(matrix[0, :, 1], matrix[0, :, 3],0).solution \
+                            and len(self.matrix[0]) == len(matrix[0]):
+                        continue
+                    cc = CurvePair(matrix[0, :, 1], matrix[0, :, 3])
+                    #stderr.write(str(k)+": "+str(cc.distance)+'\n')
+                    geodesic_distances.append(cc.distance)
+                    #print 'computed curve',k,'!'
+                #print '\n'
+                return min(set(geodesic_distances)) + 1, lib
+            else:
+                return dist, lib
+
