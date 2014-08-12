@@ -74,11 +74,13 @@ class Graph:
         self.find_all_edges(fourgons, non_fourgons, nodes, self.rep_num)
         graph_copy = deepcopy(self.nodes)
         #graph_copy = {i : set(j) for i,j in self.nodes.iteritems()}
-
+        #for k,v in graph_copy.iteritems():
+        #    stderr.write(str(k)+": "+str(v)+'\n')
+        #raw_input()
         for start_node in nodes:
             #self.loops.extend(self.iter_loop_dfs(graph_copy, start_node, start_node))
             for adj_node in graph_copy[start_node]:
-                self.loop_dfs(start_node,adj_node,graph_copy,[start_node],self.loops, self.nodes_to_faces)
+                self.loops += self.loop_dfs(start_node,adj_node,graph_copy,[start_node], self.nodes_to_faces)
         '''
         #Johnson circuit locating algorithm
         from johnson import Johnson
@@ -87,11 +89,13 @@ class Graph:
         self.loops = johnny.circuits
         '''
         #print len(self.loops)
+        from itertools import chain
+
         self.loops = [j for j in set([tuple(i) for i in self.loops])]
         edges = self.edges[1]
         for path in list(self.loops):
             temp_len = len(path)
-            in_loops = path in set(self.loops)
+            #in_loops = path in set(self.loops)
             removed = False
             if temp_len < 3:
                 if not removed:
@@ -137,7 +141,7 @@ class Graph:
 
                             #boolA = contains(triple,face)
                             #if set(triple) <= set(face) and path in self.loops:
-                            if boolA and in_loops:
+                            if boolA :
                                 if not removed:
                                     self.loops.remove(path)
                                     removed = True
@@ -250,7 +254,7 @@ class Graph:
         return len(intersection_all) == 2
 
 
-    def loop_dfs(self, current_node, start_node, graph, current_path, all_loops, nodes_to_faces):
+    def loop_dfs(self, current_node, start_node, graph, current_path, nodes_to_faces):
         '''
         Recursively finds all closed cycles in a given graph that begin and end at start_node.
         As one would guess, it employs a standard depth-first search algorithm on the graph,
@@ -274,28 +278,33 @@ class Graph:
         :returns: set of all closeds cycles in the graph starting and ending at start_node
 
         '''
+
+        #stderr.write(str(current_path)+'\n')
+        #stderr.write(str([nodes_to_faces[i] for i in current_path])+'\n')
         if len(current_path) >= 3:
             path_head_3 = current_path[-3:]
             previous_three_faces = [set(nodes_to_faces[edge]) for edge in path_head_3]
             intersection_all = set.intersection(*previous_three_faces)
             if len(intersection_all) == 2:
-                return
+                return []
 
         if current_node == start_node:
-            all_loops.append(shift(list(current_path)))
-            return
+            #stderr.write("Found one! \n")
+            #all_loops.append(shift(list(current_path)))
+            return [shift(list(current_path))]
 
         else:
+            loops = []
             for adjacent_node in set(graph[current_node]):
                 if Graph.count(adjacent_node, current_path) < self.rep_num:
                     current_path.append(adjacent_node)
                     graph[current_node].remove(adjacent_node)
                     graph[adjacent_node].remove(current_node)
-                    self.loop_dfs(adjacent_node, start_node, graph, current_path, all_loops, nodes_to_faces)
+                    loops += list(self.loop_dfs(adjacent_node, start_node, graph, current_path, nodes_to_faces))
                     graph[current_node].append(adjacent_node)
                     graph[adjacent_node].append(current_node)
                     current_path.pop()
-
+            return loops
 '''
 for i in range(len(path)):
     index = path[i]

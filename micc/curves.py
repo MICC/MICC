@@ -973,7 +973,7 @@ class CurvePair:
     distance = 0
     loops = []
     '''
-    def __init__(self, top_beta, bottom_beta, dist=1, conjectured_dist=3):
+    def __init__(self, top_beta, bottom_beta, dist=1, conjectured_dist=3,recursive=False):
 
         is_ladder = lambda top, bottom: not (0 in top or 0 in bottom)
 
@@ -1015,7 +1015,7 @@ class CurvePair:
             self.loops = graph.gammas
             #from sys import stderr
             #stderr.write(str(self.loops)+'\n')
-            self.distance, self.loop_matrices = self.compute_distance(self.matrix, self.loops, recursive=True)
+            self.distance, self.loop_matrices = self.compute_distance(self.matrix, self.loops, recursive=recursive)
         else:
             self.distance = None
 
