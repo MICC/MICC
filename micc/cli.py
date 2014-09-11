@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import curves as c
-from curves import CurvePair
+from curves import CurvePair, cycle_to_ladder
 
 class CLI:
 
@@ -180,27 +180,43 @@ class CLI:
     def run(self):
         self.clear()
         self.get_help()
+        cycle_or_ladder = raw_input('Would you like to describe curves as a ladder or a cycle?\n (Type \'cycle\' or \'ladder\'): ')
+
         valid = False
         valid_exit_status = None
         while not valid:
-            self.topRow = raw_input('Input top indentifications: ')
-            if self.topRow == 'exit' or self.topRow == 'quit': quit()
-            self.topRow = self.topRow.split(',')
-            self.topRow = self.correct_input(self.topRow)
-            self.topRow = [int(num) for num in self.topRow]
+            if cycle_or_ladder == 'ladder':
+                self.topRow = raw_input('Input top indentifications: ')
+                if self.topRow == 'exit' or self.topRow == 'quit': quit()
+                self.topRow = self.topRow.split(',')
+                self.topRow = self.correct_input(self.topRow)
+                self.topRow = [int(num) for num in self.topRow]
 
-            self.bottomRow = raw_input('Input bottom indentifications: ')
-            self.bottomRow = self.bottomRow.split(',')
-            self.bottomRow = self.correct_input(self.bottomRow)
-            self.bottomRow = [int(num) for num in self.bottomRow]
+                self.bottomRow = raw_input('Input bottom indentifications: ')
+                self.bottomRow = self.bottomRow.split(',')
+                self.bottomRow = self.correct_input(self.bottomRow)
+                self.bottomRow = [int(num) for num in self.bottomRow]
 
-            print 'Input: '
-            print self.topRow
-            print self.bottomRow
-            valid = not self.made_mistake(self.topRow,self.bottomRow)
+                print 'Input: '
+                print self.topRow
+                print self.bottomRow
+                valid = not self.made_mistake(self.topRow,self.bottomRow)
 
-            if not valid:
-                print "There seems to be an error in your entry. Please try again. "
+                if not valid:
+                    print "There seems to be an error in your entry. Please try again. "
+            if cycle_or_ladder == 'cycle':
+                cycle = raw_input('Input cycle: ')
+                print 'Input (as a cycle):'
+                print cycle
+                ladder = cycle_to_ladder(cycle)
+                self.topRow = ladder[0]
+                self.bottomRow = ladder[1]
+                print 'Input (as a ladder):'
+                print self.topRow
+                print self.bottomRow
+                valid = not self.made_mistake(self.topRow,self.bottomRow)
+                if not valid:
+                    print "There seems to be an error in your entry. Please try again. "
 
         if not self.is_multi(self.topRow, self.bottomRow):
                 self.curve = CurvePair(self.topRow, self.bottomRow)

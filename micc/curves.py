@@ -1,10 +1,8 @@
-# Paul Glenn
-# curves.py
 # Give curve pairs class structure in preparation for public access
 import numpy as np
-from itertools import product
+from itertools import product, izip
 from copy import deepcopy
-
+import re
 
 def fix_matrix_signs(M):
     '''
@@ -947,9 +945,42 @@ def test_perms(original_ladder):
             ladder_to_perm[0].append(first_vertex)
     return distance3, distance4
 
+#4+2-3-5-1+
 
+#[1,2,3,2,4]
+#[5,3,4,1,5]
+def cycle_to_ladder(cycle_rep):
+    arcs = [int(i) for i in re.split('[-+]', cycle_rep)[:-1]]
+    signs = re.split('[0-9]+', cycle_rep)[1:]
+    top = [0 for i in range(len(arcs))]
+    bottom = [0 for i in range(len(arcs))]
+    ladder = [top, bottom]
+    current_v = None
+    current_sign = None
+    prev_v = 1
+    prev_sign = '+'
+    ladder_index = 0
+    
+    for i in range(1, len(arcs)+1):
 
+        current_sign = signs.pop(0)
+        current_v = arcs.pop(0)
+        ladder[ladder_index][prev_v-1] = i
 
+        if prev_sign == current_sign:
+            ladder_index = (ladder_index + 1) % 2
+
+        ladder[ladder_index][current_v-1] = i
+        
+        if prev_sign == current_sign:
+            ladder_index = (ladder_index + 1) % 2
+        else:
+            ladder_index += 1
+
+        prev_sign = current_sign
+        prev_v = current_v
+
+    return ladder
 
 
 #import numpy as np
