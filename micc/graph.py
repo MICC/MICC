@@ -278,7 +278,6 @@ class Graph:
         :returns: set of all closeds cycles in the graph starting and ending at start_node
 
         '''
-
         #stderr.write(str(current_path)+'\n')
         #stderr.write(str([nodes_to_faces[i] for i in current_path])+'\n')
         if len(current_path) >= 3:
