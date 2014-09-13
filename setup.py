@@ -6,6 +6,7 @@ Usage:
 """
 
 from setuptools import setup
+'''
 from sys import setrecursionlimit
 setrecursionlimit(10000)
 APP = ['micc/cli.py']
@@ -36,4 +37,3 @@ setup(name='MICC',
           "rednose"
       ],
       test_suite="nose.collector")
-'''
