@@ -949,36 +949,44 @@ def test_perms(original_ladder):
 
 #[1,2,3,2,4]
 #[5,3,4,1,5]
+
+#1-6+4-2+5-7+3+
+
+#[7,4,7,2,4,2,6]
+#[1,3,6,3,5,1,5]
+
+#2+5-7+3+1-6+4-
+
+#[4,1,4,6,1,6,3]
+#[5,7,3,7,2,5,2]
+
 def cycle_to_ladder(cycle_rep):
     arcs = [int(i) for i in re.split('[-+]', cycle_rep)[:-1]]
+    n = len(arcs)
     signs = re.split('[0-9]+', cycle_rep)[1:]
     top = [0 for i in range(len(arcs))]
     bottom = [0 for i in range(len(arcs))]
     ladder = [top, bottom]
-    current_v = None
-    current_sign = None
-    prev_v = 1
-    prev_sign = '+'
-    ladder_index = 0
     
+    ladder_index = 0
     for i in range(1, len(arcs)+1):
-
         current_sign = signs.pop(0)
         current_v = arcs.pop(0)
-        ladder[ladder_index][prev_v-1] = i
 
-        if prev_sign == current_sign:
-            ladder_index = (ladder_index + 1) % 2
+        if current_sign == '+':
+            ladder[0][current_v-1] = i 
+            if i == 1:
+                ladder[1][current_v-1] = ((i - 2) & n)
+            else:
+                ladder[1][current_v-1] = ((i - 1) & n)
 
-        ladder[ladder_index][current_v-1] = i
-        
-        if prev_sign == current_sign:
-            ladder_index = (ladder_index + 1) % 2
-        else:
-            ladder_index += 1
+        if current_sign == '-':
+            ladder[1][current_v-1] = i 
+            if i == 1:
+                ladder[0][current_v-1] = ((i - 2) & n)
+            else:
+                ladder[0][current_v-1] = ((i - 1) & n)
 
-        prev_sign = current_sign
-        prev_v = current_v
 
     return ladder
 
@@ -1039,16 +1047,28 @@ class CurvePair:
         self.solution = vector_solution(self.edges[0])
 
         self.loops = []
+        self.dist = dist
+        self.conjectured_dist = conjectured_dist
+        self.computed_distance = False
+        self.recursive = recursive
+    
+    @property
+    def distance(self):
+        if self.computed_distance == False:
+            if self.dist is 1:
+                graph = Graph(self.edges, rep_num=self.conjectured_dist-2)
+                graph.compute_loops(self.n, self.genus)
+                self.loops = graph.gammas
+                #from sys import stderr
+                #stderr.write(str(self.loops)+'\n')
+                self.computed_distance, self.loop_matrices = self.compute_distance(self.matrix, self.loops, recursive=self.recursive)
 
-        if dist is 1:
-            graph = Graph(self.edges, rep_num=conjectured_dist-2)
-            graph.compute_loops(self.n, self.genus)
-            self.loops = graph.gammas
-            #from sys import stderr
-            #stderr.write(str(self.loops)+'\n')
-            self.distance, self.loop_matrices = self.compute_distance(self.matrix, self.loops, recursive=recursive)
+            else:
+                self.copmuted_distance = None
+            return self.computed_distance
         else:
-            self.distance = None
+            return self.computed_distance
+
 
     def __repr__(self):
         return self.ladder[0]+'\n'+self.ladder[1]+'\n'

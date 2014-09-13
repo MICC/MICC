@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import curves as c
 from curves import CurvePair, cycle_to_ladder
+import readline
 
 class CLI:
 
