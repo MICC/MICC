@@ -77,10 +77,14 @@ class Graph:
         #for k,v in graph_copy.iteritems():
         #    stderr.write(str(k)+": "+str(v)+'\n')
         #raw_input()
+        #from sys import stderr
+        #stderr.write(str(graph_copy)+'\n')
+        #stderr.write(str(self.nodes_to_faces)+'\n')
         for start_node in nodes:
             #self.loops.extend(self.iter_loop_dfs(graph_copy, start_node, start_node))
             for adj_node in graph_copy[start_node]:
-                self.loops += self.loop_dfs(start_node,adj_node,graph_copy,[start_node], self.nodes_to_faces)
+                #self.loops += self.loop_dfs(start_node,adj_node,graph_copy,[start_node], self.nodes_to_faces)
+                self.loops += self.iter_loop_dfs(graph_copy, start_node, start_node,self.nodes_to_faces)
         '''
         #Johnson circuit locating algorithm
         from johnson import Johnson
@@ -227,34 +231,9 @@ class Graph:
         '''
         return adj_list.count(adj_node)
 
-    def iter_loop_dfs(self, graph, start, goal):
-        loops = []
-        stack = [(start, [start])]
-        while stack:
-            vertex, path = stack.pop()
-            in_path = set(path)
-            for next in set(graph[vertex]):
-                if next in in_path:
-                    if len(path) >= 3:
-                        if self.faces_share_edges(self.nodes_to_faces, path):
-                            continue
-                    if next == goal:
-                        loops.append(list(path))
-                    else:
-                        continue
-                else:
-                    stack.append((next, list(path + [next])))
-        return loops
-
-    def faces_share_edges(self,nodes_to_faces, path):
-        path_head_3 = path[-3:]
-        previous_three_faces = [nodes_to_faces[edge] for edge in path_head_3]
-        previous_three_faces = [set(i) for i in previous_three_faces]
-        intersection_all = set.intersection(*previous_three_faces)
-        return len(intersection_all) == 2
 
 
-    def loop_dfs(self, current_node, start_node, graph, current_path, nodes_to_faces):
+    def loop_dfs(self,  current_node,  start_node,  graph,  current_path,  nodes_to_faces):
         '''
         Recursively finds all closed cycles in a given graph that begin and end at start_node.
         As one would guess, it employs a standard depth-first search algorithm on the graph,
@@ -304,6 +283,32 @@ class Graph:
                     graph[adjacent_node].append(current_node)
                     current_path.pop()
             return loops
+    @staticmethod
+    def faces_share_edges(nodes_to_faces, path):
+        path_head_3 = path[-3:]
+        previous_three_faces = [nodes_to_faces[edge] for edge in path_head_3]
+        previous_three_faces = [set(i) for i in previous_three_faces]
+        intersection_all = set.intersection(*previous_three_faces)
+        return len(intersection_all) == 2
+
+    def iter_loop_dfs(self, graph, start,  goal, nodes_to_faces):
+        loops = []
+        stack = [(start, [start])]
+        while stack:
+            vertex, path = stack.pop()
+            in_path = set(path)
+            for next in set(graph[vertex]):
+                if next in in_path:
+                    if len(path) >= 3:
+                        if Graph.faces_share_edges(nodes_to_faces, path):
+                            continue
+                    if next == goal:
+                        loops.append(list(path))
+                    else:
+                        continue
+                else:
+                    stack.append((next, list(path + [next])))
+        return loops
 '''
 for i in range(len(path)):
     index = path[i]
