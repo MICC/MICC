@@ -83,8 +83,8 @@ class Graph:
         for start_node in nodes:
             #self.loops.extend(self.iter_loop_dfs(graph_copy, start_node, start_node))
             for adj_node in graph_copy[start_node]:
-                #self.loops += self.loop_dfs(start_node,adj_node,graph_copy,[start_node], self.nodes_to_faces)
-                self.loops += self.iter_loop_dfs(graph_copy, start_node, start_node,self.nodes_to_faces)
+                self.loops += self.loop_dfs(start_node,adj_node,graph_copy,[start_node], self.nodes_to_faces)
+                #self.loops += self.iter_loop_dfs(graph_copy, start_node, start_node,self.nodes_to_faces)
         '''
         #Johnson circuit locating algorithm
         from johnson import Johnson
@@ -283,6 +283,8 @@ class Graph:
                     graph[adjacent_node].append(current_node)
                     current_path.pop()
             return loops
+
+
     @staticmethod
     def faces_share_edges(nodes_to_faces, path):
         path_head_3 = path[-3:]
@@ -297,7 +299,7 @@ class Graph:
         while stack:
             vertex, path = stack.pop()
             in_path = set(path)
-            for next in set(graph[vertex]):
+            for next in graph[vertex]:
                 if next in in_path:
                     if len(path) >= 3:
                         if Graph.faces_share_edges(nodes_to_faces, path):

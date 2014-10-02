@@ -972,20 +972,19 @@ def cycle_to_ladder(cycle_rep):
     for i in range(1, len(arcs)+1):
         current_sign = signs.pop(0)
         current_v = arcs.pop(0)
-
         if current_sign == '+':
             ladder[0][current_v-1] = i 
             if i == 1:
-                ladder[1][current_v-1] = ((i - 2) & n)
+                ladder[1][current_v-1] = n#((i - 2) % n)
             else:
-                ladder[1][current_v-1] = ((i - 1) & n)
+                ladder[1][current_v-1] = ((i - 1) % n)
 
         if current_sign == '-':
             ladder[1][current_v-1] = i 
             if i == 1:
-                ladder[0][current_v-1] = ((i - 2) & n)
+                ladder[0][current_v-1] = n#((i - 2) % n)
             else:
-                ladder[0][current_v-1] = ((i - 1) & n)
+                ladder[0][current_v-1] = ((i - 1) % n)
 
 
     return ladder
@@ -1059,19 +1058,18 @@ class CurvePair:
                 graph = Graph(self.edges, rep_num=self.conjectured_dist-2)
                 graph.compute_loops(self.n, self.genus)
                 self.loops = graph.gammas
-                #from sys import stderr
                 #stderr.write(str(self.loops)+'\n')
                 self.computed_distance, self.loop_matrices = self.compute_distance(self.matrix, self.loops, recursive=self.recursive)
 
             else:
-                self.copmuted_distance = None
+                self.computed_distance = None
             return self.computed_distance
         else:
             return self.computed_distance
 
 
     def __repr__(self):
-        return self.ladder[0]+'\n'+self.ladder[1]+'\n'
+        return str(self.ladder[0])+'\n'+str(self.ladder[1])+'\n'
 
     def compute_distance(self, M, all_paths,recursive=True):
         '''

@@ -30,7 +30,8 @@ class DistanceTests(unittest.TestCase):
         self.assertEqual(test.distance, 'at least 4!')
 
     def test_7(self):
-        test = CurvePair([19, 18, 1, 2, 3, 4, 5, 6, 7, 8, 9, 18, 19, 20, 21, 14, 15, 16, 17, 21, 20],[1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 13, 12, 11, 10, 9])
+        test = CurvePair([19, 18, 1, 2, 3, 4, 5, 6, 7, 8, 9, 18, 19, 20, 21, 14, 15, 16, 17, 21, 20],
+                         [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 13, 12, 11, 10, 9])
         self.assertEqual(test.distance, 'at least 4!')
 
     def test_georgia_d4(self):
