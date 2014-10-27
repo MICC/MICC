@@ -959,7 +959,8 @@ def test_perms(original_ladder):
 
 #[4,1,4,6,1,6,3]
 #[5,7,3,7,2,5,2]
-
+def ladder_to_cycle(ladder):
+    pass
 def cycle_to_ladder(cycle_rep):
     arcs = [int(i) for i in re.split('[-+]', cycle_rep)[:-1]]
     n = len(arcs)
