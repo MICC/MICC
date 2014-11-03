@@ -1,6 +1,7 @@
 from copy import deepcopy
 import curves as c
 from sys import stderr
+from micc.cgraph import cdfs
 
 
 def shift(path):
@@ -80,12 +81,14 @@ class Graph:
         #from sys import stderr
         #stderr.write(str(graph_copy)+'\n')
         #stderr.write(str(self.nodes_to_faces)+'\n')
+        self.loops = cdfs(0,0,graph_copy,[], self.nodes_to_faces)
+        '''
         for start_node in nodes:
             #self.loops.extend(self.iter_loop_dfs(graph_copy, start_node, start_node))
             for adj_node in graph_copy[start_node]:
+                #print start_node,adj_node,graph_copy,[start_node], self.nodes_to_faces
                 self.loops += loop_dfs(start_node,adj_node,graph_copy,[start_node], self.nodes_to_faces)
                 #self.loops += self.iter_loop_dfs(graph_copy, start_node, start_node,self.nodes_to_faces)
-        '''
         #Johnson circuit locating algorithm
         from johnson import Johnson
         johnny = Johnson(graph_copy)
@@ -263,7 +266,7 @@ class Graph:
         return loops
 
 
-
+from sys import stderr
 def loop_dfs( current_node,  start_node,  graph,  current_path,  nodes_to_faces):
     '''
     Recursively finds all closed cycles in a given graph that begin and end at start_node.
@@ -288,8 +291,6 @@ def loop_dfs( current_node,  start_node,  graph,  current_path,  nodes_to_faces)
     :returns: set of all closeds cycles in the graph starting and ending at start_node
 
     '''
-    #stderr.write(str(current_path)+'\n')
-    #stderr.write(str([nodes_to_faces[i] for i in current_path])+'\n')
     if len(current_path) >= 3:
         path_head_3 = current_path[-3:]
         previous_three_faces = [set(nodes_to_faces[edge]) for edge in path_head_3]
