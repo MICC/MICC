@@ -81,14 +81,14 @@ class Graph:
         #from sys import stderr
         #stderr.write(str(graph_copy)+'\n')
         #stderr.write(str(self.nodes_to_faces)+'\n')
-        self.loops = cdfs(0,0,graph_copy,[], self.nodes_to_faces)
-        '''
+        #self.loops = cdfs(0,0,graph_copy,[], self.nodes_to_faces)
         for start_node in nodes:
             #self.loops.extend(self.iter_loop_dfs(graph_copy, start_node, start_node))
             for adj_node in graph_copy[start_node]:
                 #print start_node,adj_node,graph_copy,[start_node], self.nodes_to_faces
                 self.loops += loop_dfs(start_node,adj_node,graph_copy,[start_node], self.nodes_to_faces)
                 #self.loops += self.iter_loop_dfs(graph_copy, start_node, start_node,self.nodes_to_faces)
+        '''
         #Johnson circuit locating algorithm
         from johnson import Johnson
         johnny = Johnson(graph_copy)
