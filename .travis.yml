@@ -34,5 +34,4 @@ install:
     - python setup.py install
 
 script:
-    - nosetests
-    
+    - nosetests    
