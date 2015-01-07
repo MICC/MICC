@@ -1,7 +1,7 @@
 from copy import deepcopy
 import curves as c
 from sys import stderr
-from micc.cgraph import cdfs
+#from micc.cgraph import cdfs
 
 
 def shift(path):
@@ -74,6 +74,8 @@ class Graph:
             self.add_node(i)
         self.find_all_edges(fourgons, non_fourgons, nodes, self.rep_num)
         graph_copy = deepcopy(self.nodes)
+        #stderr.write(str(edges)+'\n')
+        #stderr.write(str(graph_copy)+'\n')
         #graph_copy = {i : set(j) for i,j in self.nodes.iteritems()}
         #for k,v in graph_copy.iteritems():
         #    stderr.write(str(k)+": "+str(v)+'\n')

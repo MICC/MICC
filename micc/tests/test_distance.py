@@ -48,6 +48,10 @@ class DistanceTests(unittest.TestCase):
 
 
     def test_birman(self):
+        #as ladder:
+        # 1 4 3 4 1 6
+        #-|-|-|-|-|-|-
+        # 6 5 2 3 2 5
         top = [4,3,3,1,0,0]
         bot = [5,5,4,2,2,1]
         test = CurvePair(top,bot)

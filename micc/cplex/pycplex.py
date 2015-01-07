@@ -75,20 +75,21 @@ for v in graph.keys():
 
 for cycle in set([tuple(c) for c in cycles]):
     print cycle
-c = c.Cplex('genus3.lp')
-#c.parameters.mip.limits.populate.set(2000000000)
-#c.parameters.mip.limits.populate.set(2000000)
-##c.parameters.mip.pool.absgap.set(0.0)
-#c.parameters.mip.pool.intensity.set(4)
-#c.CPX_PARAM_SOLNPOOLINTENSITY = 4
-#c.CPX_PARAM_SOLNPOOLAGAP = 0.0
-#c.CPX_PARAM_POPULATELIM = 2000000000
-c.solve()
-c.populate_solution_pool()
-for i in range(c.solution.pool.get_num()):
-    test = c.solution.pool.get_values(i)
-    print test
 '''
+if __name__ == '__main__':
+	c = c.Cplex('genus3.lp')
+	c.parameters.mip.limits.populate.set(2000000000)
+	#c.parameters.mip.limits.populate.set(2000000)
+	##c.parameters.mip.pool.absgap.set(0.0)
+	#c.parameters.mip.pool.intensity.set(4)
+	#c.CPX_PARAM_SOLNPOOLINTENSITY = 4
+	#c.CPX_PARAM_SOLNPOOLAGAP = 0.0
+	#c.CPX_PARAM_POPULATELIM = 2000000000
+	c.solve()
+	c.populate_solution_pool()
+	for i in range(c.solution.pool.get_num()):
+		test = c.solution.pool.get_values(i)
+		print test
 '''
 print test
 l = weights_to_ladder(test)

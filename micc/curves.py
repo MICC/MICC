@@ -545,6 +545,9 @@ def edges(M):
                     faces += 1
                     found = 1
                     all_faces.append((edges,face))
+    #from sys import stderr
+    #stderr.write('all_faces '+str(all_faces)+'\n')
+    #stderr.write('Paths '+str(Paths))
     return all_faces, Paths
 
 def boundary_count(M):
@@ -959,8 +962,70 @@ def test_perms(original_ladder):
 
 #[4,1,4,6,1,6,3]
 #[5,7,3,7,2,5,2]
-def ladder_to_cycle(ladder):
-    pass
+def ladder_to_cycle(ladder_top, ladder_bottom):
+    locations = {arc: {'top': [], 'bottom': []} for arc in set(ladder_top + ladder_bottom)}
+    for loc, varc in enumerate(ladder_top):
+        locations[varc]['top'].append(loc)
+
+    for loc, varc in enumerate(ladder_bottom):
+        locations[varc]['bottom'].append(loc)
+
+    n = len(ladder_top)
+    cycle = ''
+    #arbitrarily orient them positively
+    orientation = '+'
+    current = 'top'
+    start = 1
+    prev_loc = (ladder_top+ladder_bottom).index(start) % n
+    for i in range(n):
+        #get the top and bottom of the current vertex
+        top = locations[start]['top']
+        bottom = locations[start]['bottom']
+
+        # if there is an endpoint on both the top and bottom,
+        # then orientation is preserved and the location is simply
+        # whatever hasn't already been used. We switch side of the
+        # ladder accordingly
+        if top and bottom:
+            # switch side of ladder
+            current = 'top' if current == 'bottom' else 'bottom'
+            # preserve orientation
+            orientation = '-' if orientation == '-' else '+'
+            # get the locations avaiable there
+            locs = locations[start][current]
+            cycle += str(locs[0]+1) + orientation
+            if current == 'bottom':
+                start = ladder_top[locs[0]]
+            if current == 'top':
+                start = ladder_bottom[locs[0]]
+            prev_loc = locs[0]
+            current = 'top' if current == 'bottom' else 'bottom'
+        elif not top:
+            current = 'bottom'
+            orientation = '-' if orientation == '+' else '+'
+            locs = locations[start][current]
+            t = set(locs)
+            t.remove(prev_loc)
+            current_loc = t.pop()
+            cycle += str(current_loc+1)+orientation
+            start = ladder_top[current_loc]
+            prev_loc = current_loc
+            current = 'top'
+        elif not bottom:
+            current = 'top'
+            orientation = '-' if orientation == '+' else '+'
+            locs = locations[start][current]
+            t = set(locs)
+            t.remove(prev_loc)
+            current_loc = t.pop()
+            cycle += str(current_loc+1)+orientation
+            start = ladder_bottom[current_loc]
+            prev_loc = current_loc
+
+            current = 'bottom'
+    return cycle
+
+
 def cycle_to_ladder(cycle_rep):
     arcs = [int(i) for i in re.split('[-+]', cycle_rep)[:-1]]
     n = len(arcs)
@@ -1043,7 +1108,7 @@ class CurvePair:
         self.boundaries = boundary_count(self.matrix)
         self.genus = genus(self.matrix)
         self.edges = edges(self.matrix)
-
+        #self.arc_boundary = self.edges[1]
         self.solution = vector_solution(self.edges[0])
 
         self.loops = []
