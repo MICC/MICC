@@ -1,50 +1,23 @@
-from micc.curves import CurvePair, edges, build_matrices, fix_matrix_signs,Three
-from micc.graph import Graph
-from line_profiler import LineProfiler
+from micc.curves import CurvePair
+
+top = [4,3,3,1,0,0]
+bot = [5,5,4,2,2,1]
+
+top = [5,6,7,8,3,4,11,0,1,10,11,6]
+bot = [7,8,9,4,5,0,1,2,3,2,9,10]
 
 
-def do_profile(follow=[]):
-    def inner(func):
-        def profiled_func(*args, **kwargs):
-            try:
-                profiler = LineProfiler()
-                profiler.add_function(func)
-                for f in follow:
-                    profiler.add_function(f)
-                profiler.enable_by_count()
-                return func(*args, **kwargs)
-            finally:
-                profiler.print_stats()
-        return profiled_func
-    return inner
+top = [2,3,7,9,10,7,8,2,4,5,0,1]
+bot = [10,11,0,1,8,9,11,5,6,3,4,6]
 
 
-def get_number():
-    for x in xrange(5000000):
-        yield x
+top = [21,7,8,9,10,11,22,23,24,0,1,2,3,4,5,6,12,13,14,15,16,17,18,19,20]
+bot = [9,10,11,12,13,14,15,1,2,3,4,5,16,17,18,19,20,21,22,23,24,0,6,7,8]
+test = CurvePair(top,bot)
+print test.distance
+for loop in test.loop_matrices.values():
+    cc = CurvePair(loop[0, :, 1], loop[0, :, 3])
 
-@do_profile(follow=[get_number])
-def expensive_function():
-    for x in get_number():
-        i = x ^ x ^ x
-    return 'some result!'
-
-#result = expensive_function()
-
-
-def get_dist(top,bot):
-    return CurvePair(top,bot).distance
-
-#@do_profile(follow=[get_dist,Graph.compute_loops, Graph.iter_loop_dfs,Graph.faces_share_edges,Graph.loop_dfs, edges, build_matrices,fix_matrix_signs])
-@do_profile(follow=[get_dist,CurvePair.compute_distance, Three, Graph.compute_loops, Graph.loop_dfs])
-def profile_distance(top,bot):
-    return get_dist(top,bot)
-
-
-#print profile_distance([6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 1, 2, 3, 4, 17, 5],
-#                [1, 2, 12, 13, 14, 15, 16, 5, 6, 7, 8, 9, 10, 11, 12, 3, 4])
-#print profile_distance([23, 22, 1, 2, 3, 4, 5, 22, 23, 24, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24],
-#                       [1, 2, 3, 4, 19, 20, 21, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 20, 19, 5])
-
-#print profile_distance([1,11,3,27,8,15,7,24,29,10,2,12,4,21,19,17,24,14,6,23,28,9,16,25,13,5,20,18,16],[29,10,2,26,7,14,6,23,28,9,1,11,3,22,20,18,25,13,5,22,27,8,15,26,12,4,21,19,17])
-print profile_distance([1,2,3,4,12,10,14,15,9,13,11,12,4,5,6,7,21,22,23,24,16,17,18,19],[24,1,2,3,13,9,15,16,8,14,10,11,5,6,7,8,20,21,22,23,17,18,19,20])
+    print 'dist:',cc.distance
+    print 'genus:',cc.genus
+    print '\n'

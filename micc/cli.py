@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import curves as c
-from curves import CurvePair, cycle_to_ladder
+from curves import CurvePair, cycle_to_ladder, ladder_to_cycle
+import readline
 
 class CLI:
 
@@ -197,7 +198,9 @@ class CLI:
                 self.bottomRow = self.correct_input(self.bottomRow)
                 self.bottomRow = [int(num) for num in self.bottomRow]
 
-                print 'Input: '
+                print 'Input (as a cycle):'
+                print ladder_to_cycle(self.topRow, self.bottomRow)
+                print 'Input (as a ladder): '
                 print self.topRow
                 print self.bottomRow
                 valid = not self.made_mistake(self.topRow,self.bottomRow)
