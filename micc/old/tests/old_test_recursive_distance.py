@@ -1,5 +1,4 @@
 import unittest
-from micc.curves import CurvePair
 import numpy as np
 from sys import stderr
 
