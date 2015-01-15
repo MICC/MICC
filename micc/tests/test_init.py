@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
-from sys import stderr
 
-class DistanceTests(unittest.TestCase):
+
+class CurvesTests(unittest.TestCase):
     def test_init(self):
         self.assertTrue(True)
 
