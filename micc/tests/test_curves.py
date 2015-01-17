@@ -14,7 +14,7 @@ class CurveTests(unittest.TestCase):
         graphical_rep_cycle = RigidGraph(cycle=cycle)
         for k, v in graphical_rep_ladder.graph.iteritems():
             stderr.write(str(k)+': '+str(v)+'\n')
-        graphical_rep_ladder.determine_boundaries()
+        stderr.write(str(graphical_rep_ladder.determine_boundaries())+'\n')
         self.assertEqual(graphical_rep_ladder.graph, graphical_rep_cycle.graph)
 
 if __name__ == '__main__':

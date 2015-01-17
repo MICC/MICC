@@ -60,7 +60,7 @@ class RigidGraph(object):
             # This may seem arbitrary, but we're taking advantage of the fact
             # this ladder_init() performs curve traversals. It's silly to
             # rewrite all of this again, so it's placed here.
-            self.v.add(( mod_n(super_vertex - 1), super_vertex))
+            self.v.add((mod_n(super_vertex - 1), super_vertex))
 
         # Now we populate the 'T' and 'B' portions of the graph. This requires
         # iterating over the identifications of the ladder and determining the
@@ -183,6 +183,7 @@ class RigidGraph(object):
             boundaries.append(boundary)
 
         return boundaries
+
 
 class CurvePair(object):
     """
