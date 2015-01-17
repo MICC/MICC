@@ -1,4 +1,5 @@
 # Give curve pairs class structure in preparation for public access
+from sys import stderr
 import numpy as np
 from itertools import product, izip
 from copy import deepcopy
@@ -1108,7 +1109,7 @@ class CurvePair:
         self.boundaries = boundary_count(self.matrix)
         self.genus = genus(self.matrix)
         self.edges = edges(self.matrix)
-        #self.arc_boundary = self.edges[1]
+        self.arc_boundary = self.edges[1]
         self.solution = vector_solution(self.edges[0])
 
         self.loops = []
@@ -1124,7 +1125,6 @@ class CurvePair:
                 graph = Graph(self.edges, rep_num=self.conjectured_dist-2)
                 graph.compute_loops(self.n, self.genus)
                 self.loops = graph.gammas
-                #stderr.write(str(self.loops)+'\n')
                 self.computed_distance, self.loop_matrices = self.compute_distance(self.matrix, self.loops, recursive=self.recursive)
 
             else:
