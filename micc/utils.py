@@ -147,3 +147,11 @@ def cycle_to_ladder(cycle_rep):
 
     return ladder
 
+
+def shift(path):
+    temp = path.index(min(path))
+    return path[temp:] + path[:temp]
+
+
+def invert(path):
+    return shift(path[::-1])
