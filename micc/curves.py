@@ -215,6 +215,8 @@ class CurvePair(object):
         self.verbose_boundaries = self.rigid_graph.boundaries
         self.concise_boundaries = \
             self.boundary_reduction(self.verbose_boundaries)
+
+        self.genus = self.genus(self.concise_boundaries)
         self.graph = None
         if compute:
             self.graph = Graph(self.concise_boundaries, self.n)
@@ -249,6 +251,23 @@ class CurvePair(object):
 
         return concise_boundaries
 
+    def genus(self, boundaries):
+        """
+        Compute lowest genus surface that the pair of curves fill upon.
+        :param boundaries:
+        :return:
+        """
+        number_of_bigons = sum([1 for bigon in boundaries.itervalues()
+                                if len(bigon) == 1])
+
+        v = self.n  # by definition
+        e = 2 * self.n  # this should be clear from looking at RigidGraph.graph
+        f = len(boundaries)
+        euler = v - e + f
+        genus = 1 - euler/2
+        if number_of_bigons:
+            genus -= 1
+        return genus
 
 class Graph(object):
 
