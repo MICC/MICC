@@ -202,9 +202,10 @@ class CurvePair(object):
         compute: boolean indicating whether or not to compute distance
     """
 
-    def __init__(self, input_rep, compute=False, *args, **kwargs):
+    def __init__(self, input_rep, compute=False, arc_path=None, *args, **kwargs):
         self.rigid_graph = None
-
+        if arc_path:
+            self.arc_path = arc_path
         if '+' in input_rep or '-' in input_rep:
             self.cycle = input_rep
             self.ladder = relabel(cycle_to_ladder(input_rep))
@@ -454,4 +455,4 @@ class CurvePair(object):
 
         ladder[0] = [j+1 for j in ladder[0]]
         ladder[1] = [j+1 for j in ladder[1]]
-        return CurvePair(ladder)
+        return CurvePair(ladder, arc_path=arc_path)
