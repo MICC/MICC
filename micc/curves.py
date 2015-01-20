@@ -1,5 +1,7 @@
+from itertools import izip
 import random
 import numpy as np
+from micc.graph import Graph
 from micc.utils import cycle_to_ladder, ladder_to_cycle, relabel, shift
 from copy import copy
 from sys import stderr
@@ -151,7 +153,7 @@ class RigidGraph(object):
                     # consider top/bottom. We're pulling T/B depending on which
                     # value corresponds to source_vertex
                     for k, val in self.graph[target_vertex].iteritems():
-                        if k in ('B','T') and val == source_vertex:
+                        if k in ('B', 'T') and val == source_vertex:
                             target_dir = k
                 else:  # it's in ('R', 'L')
                     for k, val in self.graph[target_vertex].iteritems():
@@ -217,10 +219,12 @@ class CurvePair(object):
             self.boundary_reduction(self.verbose_boundaries)
 
         self.genus = self.genus(self.concise_boundaries)
-        self.graph = None
+        self.graph = Graph(self.concise_boundaries, self.n)
+
         if compute:
-            self.graph = Graph(self.concise_boundaries, self.n)
-            pass
+            self.distance, self.complementary_curves = \
+                self.compute_distance(self.graph)
+
 
     def boundary_reduction(self, verbose_boundaries):
         """
@@ -241,7 +245,6 @@ class CurvePair(object):
         concise_boundaries = {}
 
         for index, boundary in enumerate(verbose_boundaries):
-            stderr.write(str(boundary)+'\n')
             concise_boundary = [int(edge[:-1]) for edge in boundary
                                 if edge[-1] == 'R']  # if unclear, look at
                                                      # example above
@@ -269,154 +272,186 @@ class CurvePair(object):
             genus -= 1
         return genus
 
-class Graph(object):
-
-    def __init__(self, boundaries, n):
-        self.n = n
-        self.boundaries = boundaries
-        self.dual_graph, self.faces_containing_arcs = \
-            self.create_dual_graph(self.boundaries)
-        self.find_cycles()
-
-    def create_dual_graph(self, boundaries):
+    def compute_distance(self, graph, recursive=False):
         """
-        This function constructs the pseudo-dual graph of our reference curve
-        arcs by inspecting the connectivity information of the complementary
-        polygons.
-        :param boundaries: The return value of boundary_reduction()
-        :return: An adjacency list ({int: list}) that:
-            - Vertices are reference curve arcs
-            - Edge connect vertices if the arcs are connected by a polygonal
-            region.
+        Returns distance of the CurvePair object.
+        :return: An integer distance (3, 4, etc.)
         """
-        #boundary_sets = [set(b) for b in boundaries]
-        def inverted_arc_index(boundaries):
-            # form an inverted index for reference arcs; this allows the ability
-            # to determine which polygons the ith arc bounds (at most two)
+        distance = 0
 
-            faces_containing_arcs = {arc: [] for arc in xrange(self.n)}
-            for face_id, arcs in boundaries.iteritems():
-                for arc in arcs:
-                    faces_containing_arcs[arc].append(face_id)
-
-            return faces_containing_arcs
-
-        faces_containing_arcs = inverted_arc_index(boundaries)
-        self.fourgons = [arcs for arcs in boundaries.itervalues()
-                    if len(arcs) == 2]  # 2 reference arcs + 2 transverse
-                                             # arcs = 4 sided polygon
-        self.non_fourgons = [arcs for arcs in boundaries.itervalues()
-                        if len(arcs) != 2]  # similar logic here
-
-        # one vertex per reference arc
-        dual_graph = {v: [] for v in xrange(self.n)}
-        regions = self.fourgons + self.non_fourgons
-        for region in regions:
-            altered_region = list(region)
-
-            for arc in region:
-                altered_region.remove(arc)
-
-                for other_edge in altered_region:
-                    if other_edge not in dual_graph[arc]:
-                        dual_graph[arc].append(other_edge)
-
-                    if arc not in dual_graph[other_edge]:
-                        dual_graph[other_edge].append(arc)
-
-                altered_region.append(arc)  # COULD BE SO BAD
-
-        return dual_graph, faces_containing_arcs
-
-    def path_is_valid(self, current_path):
-        """
-        Aims to implicitly filter during dfs to decrease output size. Observe
-        that more complex filters are applied further down the function.
-        We'd rather do less work to show the path is invalid rather than more,
-        so filters are applied in order of increasing complexity.
-        :param current_path:
-        :return: Boolean indicating a whether the given path is valid
-        """
-        length = len(current_path)
-        if length < 3:
-            # The path is too short
+        def regions_share_two_edges(regions):
+            for region_index in regions:
+                for other_index in regions:
+                    if region_index == other_index:
+                        continue
+                    if len(set(regions[region_index]) &
+                           set(regions[other_index])) > 1:
+                        # This means they share more than one side
+                        return True
             return False
 
-        # The idea here is take a moving window of width three along the path
-        # and see if it's contained entirely in a polygon.
-        arc_triplets = (current_path[i:i+3] for i in xrange(length-2))
-        for triplet in arc_triplets:
-            for face in self.non_fourgons:
-                if set(triplet) <= set(face):
-                    return False
+        def regions_share_itself(regions):
+            for region in regions.itervalues():
+                n = len(region)
+                if n == 1:
+                    # This means there's a bigon
+                    return True
+                if len(region) != len(set(region)):
+                    # One of the edges appears twice
+                    return True
+            return False
 
-        # This is all kinds of unclear when looking at. There is an edge case
-        # pertaining to the beginning and end of a path existing inside of a
-        # polygon. The previous filter will not catch this, so we cycle the path
-        # a reasonable amount and recheck moving window filter.
-        path_copy = list(current_path)
-        for i in xrange(int(length/4)):
-            path_copy = path_copy[1:] + path_copy[:1]  # wtf
-            arc_triplets = (path_copy[i:i+3] for i in xrange(length-2))
-            for triplet in arc_triplets:
-                for face in self.non_fourgons:
-                    if set(triplet) <= set(face):
-                        return False
-
-        return True
-
-    def cycle_dfs(self, current_node,  start_node,  graph, current_path):
-        """
-        Naive depth first search applied to the pseudo-dual graph of the
-        reference curve. This sucker is terribly inefficient. More to come.
-        :param current_node:
-        :param start_node:
-        :param graph:
-        :param current_path:
-        :return:
-        """
-        if len(current_path) >= 3:
-            last_three_vertices = current_path[-3:]
-            previous_three_faces = [set(self.faces_containing_arcs[vertex])
-                                    for vertex in last_three_vertices]
-            intersection_all = set.intersection(*previous_three_faces)
-            if len(intersection_all) == 2:
-                return []
-
-        if current_node == start_node:
-            if self.path_is_valid(current_path):
-                return [tuple(shift(list(current_path)))]
-            else:
-                return []
+        if regions_share_itself(self.concise_boundaries):
+            return 3
+        elif regions_share_two_edges(self.concise_boundaries):
+            return 3
 
         else:
-            loops = []
-            for adjacent_node in set(graph[current_node]):
-                current_path.append(adjacent_node)
-                graph[current_node].remove(adjacent_node)
-                graph[adjacent_node].remove(current_node)
-                loops += list(self.cycle_dfs(adjacent_node, start_node,
-                                             graph, current_path))
-                graph[current_node].append(adjacent_node)
-                graph[adjacent_node].append(current_node)
-                current_path.pop()
-            return loops
+            cycles = self.graph.find_cycles()
+            complement_curves = []
 
-    def find_cycles(self):
-        """
-        Finds all possible cycles in the pseudo-dual graph and removes
-        remove duplicates to the fullest extend possible.
-        """
-        cycles = []
-        cycle_set = set()
-        for vertex in self.dual_graph:
-            for adjacent_vertex in self.dual_graph[vertex]:
-                cycles = self.cycle_dfs(vertex, adjacent_vertex,
-                                        self.dual_graph, [])
-                cycle_set = cycle_set | set(cycles)
-        for cycle in cycle_set:
-            stderr.write(str(cycle)+'\n')
-            if len(cycle) < 3:
-                continue
-        stderr.write(str(len(cycle_set))+'\n')
+            def is_valid(cycle):
+                n = len(cycle)
+                for i in xrange(n+1):
+                    arc = cycle[i % n]
+                    next_arc = cycle[(i+1) % n]
+                    if next_arc not in self.graph.dual_graph[arc]:
+                        return False
+                return True
 
+            for cycle in cycles:
+                if not is_valid(cycle):
+                    continue
+                curvepair_in_comp = self.curvepair_from_arc_path(cycle,
+                                                        compute=recursive)
+
+                if curvepair_in_comp.genus <= self.genus:
+                    complement_curves.append(curvepair_in_comp)
+                    # This create the short-list of curves in the complement
+                    # of the transverse curve intersection the reference curve.
+
+            if recursive:
+                distances = set([curvepair.distance for curvepair in
+                                 complement_curves])
+
+                if len(distances) == 1:
+                    d = distances.pop()
+                    distance = 'at least '+str(d+1)
+                else:
+                    d = min(distances)
+                    distance = d+1
+
+            else:
+                # we can only test for distance 3 and 'at least 4'
+                genuses = set([curvepair.genus for curvepair in
+                               complement_curves])
+
+                if len(genuses) == 1:
+                    distance = 'at least '+str(4)
+                else:
+                    min_genus = min(genuses)
+                    if min_genus < self.genus:
+                        distance = 3
+        return distance, complement_curves
+
+    def curvepair_from_arc_path(self, arc_path, compute=False):
+        """
+        Reconstruct a CurvePair object from a sequence of reference arcs
+        defining a path in the complement of the transverse curve. This forms
+        a sort of hierarchy that is useful for higher distance; the member
+        variables of the target CurvePair object are being used to spawn a new
+        CurvePair in the complement. This allows for a straightforward tree of
+        parent-child CurvePair objects, where the children recursively determine
+        the distances of their parents.
+        :param arc_path: A sequence of reference arcs from the current CurvePair
+        :param compute: pass along the distance computation parameter
+        :return: A child CurvePair whose intersections are determined by the
+                polygonal connections of the current CurvePair
+        """
+        parent_arcs = sorted(arc_path)
+        child_arcs = range(len(parent_arcs)) # curves are labeled 0 - n-1
+        # For easier access, we map the resulting child arcs to
+        # the old parent arcs to keep track of what goes where
+        map_parent_to_child = {p_arc: c_arc for c_arc, p_arc in
+                               izip(child_arcs, parent_arcs)}
+        to_child = lambda a : map_parent_to_child[a]
+
+        # Recall that the reference arcs are labeled by the left endpoints.
+        # These are determined by the edges in verbose_boundaries that contain
+        # R's:
+        # For example:
+        #                            |
+        #                            T
+        #                            |
+        #                            ^
+        #                            |
+        #                          --+--<- R --
+        #                            |
+        # The R labels in verbose boundaries correspond to the arcs of arc_path.
+        # The T/B that is attached to a specific R will determine how the arc
+        # connects to the next arc in the path.
+
+        # fill up the ladder to allow for indexing later
+        ladder = [[None] * len(arc_path), [None] * len(arc_path)]
+
+        def find_region_with_arcs(current_arc, next_arc):
+            # These is only going to be one region that has current_arc+R
+            # and next_arc+R; if more than one had each, they would share two
+            # edges and get caught earlier on.
+            current_str = str(current_arc)+'R'
+            next_str = str(next_arc)+'R'
+
+            for region in [r for r in self.verbose_boundaries]:
+                if current_str in region and next_str in region:
+                    return region
+
+        # Cleaner way to iterate over sequential arc pairs cyclically
+
+        def find_direction(arc, region):
+            # Again looking for the R arcs
+            arc_str = str(arc)+'R'
+            arc_location = region.index(arc_str)  # unique edges so this works
+            if arc_location == 0:
+               surrounding_arcs = [region[-1]]+region[:2]
+            else:
+                surrounding_arcs = region[arc_location-1:arc_location+2]
+            # Filter out arc_str and the other spurious arc
+            direction = [edge[-1] for edge in surrounding_arcs
+                         if int(edge[:-1]) == arc and
+                         edge != arc_str].pop()
+            return direction
+
+        for i, (arc, next_arc) in enumerate(
+                                             izip(arc_path, list(arc_path[1:]) +
+                                                 [arc_path[0]])):
+            region = find_region_with_arcs(arc, next_arc)
+
+            # Figure out where the edges are actually leading
+            arc_direction = find_direction(arc, region)
+            next_arc_direction = find_direction(next_arc, region)
+
+            # Fill the ladder based on the directions
+            # TODO make this less ugly and stupid
+
+            child_ind = to_child(arc)
+            next_child_ind = to_child(next_arc)
+
+            if 'T' == arc_direction and 'T' == next_arc_direction:
+                ladder[0][child_ind] = i
+                ladder[0][next_child_ind] = i
+
+            elif 'T' == arc_direction and 'B' == next_arc_direction:
+                ladder[0][child_ind] = i
+                ladder[1][next_child_ind] = i
+
+            elif 'B' == arc_direction and 'T' == next_arc_direction:
+                ladder[1][child_ind] = i
+                ladder[0][next_child_ind] = i
+
+            elif 'B' == arc_direction and 'B' == next_arc_direction:
+                ladder[1][child_ind] = i
+                ladder[1][next_child_ind] = i
+
+        ladder[0] = [j+1 for j in ladder[0]]
+        ladder[1] = [j+1 for j in ladder[1]]
+        return CurvePair(ladder)

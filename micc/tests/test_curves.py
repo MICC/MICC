@@ -1,5 +1,3 @@
-__author__ = 'Matt'
-
 import unittest
 from micc.curves import RigidGraph
 from sys import stderr
@@ -37,11 +35,13 @@ class CurveTests(unittest.TestCase):
         for k, v in curvepair.graph.dual_graph.iteritems():
             stderr.write(str(k)+': '+str(v)+'\n')
         self.assertTrue(True)
+    '''
     def test_curvepair_2(self):
         # d = 4, g = 2, i = 12
         ladder = [[12, 5, 6, 9, 10, 12, 11, 1, 2, 3, 4, 11],
                   [1, 2, 7, 8, 9, 10, 5, 6, 8, 7, 3, 4]]
-        curvepair = CurvePair(ladder, compute=False)
+        stderr.write("starting\n")
+        curvepair = CurvePair(ladder, compute=True)
         for k, v in curvepair.rigid_graph.graph.iteritems():
             stderr.write(str(k)+': '+str(v)+'\n')
         #for boundary in curvepair.verbose_boundaries:
@@ -50,7 +50,7 @@ class CurveTests(unittest.TestCase):
             stderr.write(str(boundary)+'\n')
         for k, v in curvepair.graph.dual_graph.iteritems():
             stderr.write(str(k)+': '+str(v)+'\n')
+        stderr.write(str(curvepair.distance)+'\n')
         self.assertTrue(True)
-    '''
 if __name__ == '__main__':
     unittest.main()
