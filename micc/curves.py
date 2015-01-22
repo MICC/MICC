@@ -2,7 +2,7 @@ from itertools import izip
 import random
 import numpy as np
 from micc.graph import Graph
-from micc.utils import cycle_to_ladder, ladder_to_cycle, relabel, shift
+from micc.utils import cycle_to_ladder, ladder_to_cycle, relabel, shift, invert
 from copy import copy
 from sys import stderr
 
@@ -309,6 +309,15 @@ class CurvePair(object):
 
         else:
             cycles = self.graph.find_cycles()
+
+            # Quick removal of inverted paths:
+            cycles_no_inversion = set()
+            for cycle in cycles:
+                if invert(cycle) in cycles_no_inversion:
+                    continue
+                cycles_no_inversion.add(cycle)
+            cycles = cycles_no_inversion
+
             complement_curves = []
 
             def is_valid(cycle):
@@ -370,12 +379,12 @@ class CurvePair(object):
                 polygonal connections of the current CurvePair
         """
         parent_arcs = sorted(arc_path)
-        child_arcs = range(len(parent_arcs)) # curves are labeled 0 - n-1
+        child_arcs = range(len(parent_arcs))  # curves are labeled 0 - n-1
         # For easier access, we map the resulting child arcs to
         # the old parent arcs to keep track of what goes where
         map_parent_to_child = {p_arc: c_arc for c_arc, p_arc in
                                izip(child_arcs, parent_arcs)}
-        to_child = lambda a : map_parent_to_child[a]
+        to_child = lambda a: map_parent_to_child[a]
 
         # Recall that the reference arcs are labeled by the left endpoints.
         # These are determined by the edges in verbose_boundaries that contain
@@ -422,15 +431,13 @@ class CurvePair(object):
                          edge != arc_str].pop()
             return direction
 
-        for i, (arc, next_arc) in enumerate(
-                                             izip(arc_path, list(arc_path[1:]) +
-                                                 [arc_path[0]])):
+        for i, (arc, next_arc) in enumerate(izip(arc_path, list(arc_path[1:]) +
+                                            [arc_path[0]])):
             region = find_region_with_arcs(arc, next_arc)
 
             # Figure out where the edges are actually leading
             arc_direction = find_direction(arc, region)
             next_arc_direction = find_direction(next_arc, region)
-
             # Fill the ladder based on the directions
             # TODO make this less ugly and stupid
 
@@ -455,4 +462,4 @@ class CurvePair(object):
 
         ladder[0] = [j+1 for j in ladder[0]]
         ladder[1] = [j+1 for j in ladder[1]]
-        return CurvePair(ladder, arc_path=arc_path)
+        return CurvePair(ladder, arc_path=arc_path, compute=compute)

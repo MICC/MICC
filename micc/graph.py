@@ -76,6 +76,10 @@ class Graph(object):
             # The path is too short
             return False
 
+        # Passes through arcs twice... Sketchy for later.
+        if len(set(current_path)) != len(current_path):
+            return False
+
         # The idea here is take a moving window of width three along the path
         # and see if it's contained entirely in a polygon.
         arc_triplets = (current_path[i:i+3] for i in xrange(length-2))
@@ -89,7 +93,7 @@ class Graph(object):
         # polygon. The previous filter will not catch this, so we cycle the path
         # a reasonable amount and recheck moving window filter.
         path_copy = list(current_path)
-        for i in xrange(int(length/4)):
+        for i in xrange(length):
             path_copy = path_copy[1:] + path_copy[:1]  # wtf
             arc_triplets = (path_copy[i:i+3] for i in xrange(length-2))
             for triplet in arc_triplets:
@@ -109,6 +113,7 @@ class Graph(object):
         :param current_path:
         :return:
         """
+        #stderr.write(str(current_path)+'\n')
         if len(current_path) >= 3:
             last_three_vertices = current_path[-3:]
             previous_three_faces = [set(self.faces_containing_arcs[vertex])
@@ -143,7 +148,9 @@ class Graph(object):
         :return: a set of filtered candidate cycles
         """
         if not self.cycles:
-            for vertex in self.dual_graph:
+            verts = set([item for sublist in self.non_fourgons
+                         for item in sublist])
+            for vertex in verts: #self.dual_graph:
                 for adjacent_vertex in self.dual_graph[vertex]:
                     some_cycles = self.cycle_dfs(vertex, adjacent_vertex,
                                             self.dual_graph, [])

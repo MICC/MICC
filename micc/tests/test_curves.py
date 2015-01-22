@@ -5,6 +5,7 @@ from micc.curves import  CurvePair
 
 
 class CurveTests(unittest.TestCase):
+    '''
 
     def test_rigid_graph1(self):
         cycle = '4+2-3-5-1+'
@@ -21,7 +22,6 @@ class CurveTests(unittest.TestCase):
         #    stderr.write(str(boundary)+'\n')
         self.assertTrue(True)
         #self.assertEqual(graphical_rep_ladder.graph, graphical_rep_cycle.graph)
-    '''
     def test_curvepair(self):
         # Birman Distance 3
         ladder = [[1, 4, 3, 4, 1, 6], [6, 5, 2, 3, 2, 5]]
@@ -35,7 +35,6 @@ class CurveTests(unittest.TestCase):
         for k, v in curvepair.graph.dual_graph.iteritems():
             stderr.write(str(k)+': '+str(v)+'\n')
         self.assertTrue(True)
-    '''
     def test_curvepair_2(self):
         # d = 4, g = 2, i = 12
         ladder = [[12, 5, 6, 9, 10, 12, 11, 1, 2, 3, 4, 11],
@@ -52,5 +51,6 @@ class CurveTests(unittest.TestCase):
             stderr.write(str(k)+': '+str(v)+'\n')
         stderr.write(str(curvepair.distance)+'\n')
         self.assertTrue(True)
+    '''
 if __name__ == '__main__':
     unittest.main()
