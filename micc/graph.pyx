@@ -1,4 +1,3 @@
-from collections import defaultdict
 from itertools import izip
 from micc.utils import shift
 from sys import stderr
@@ -103,9 +102,9 @@ class Graph(object):
         for j in xrange(length):
             path_copy = path_copy[1:] + path_copy[:1]  # wtf
             for i in xrange(length-2):
-                #for face in self.non_fourgons:
-                for face in (self.non_fourgons[face_id]
-                             for face_id in self.non_fourgon_map[path_copy[i]]):
+                for face in self.non_fourgons:
+                #for face in (self.non_fourgons[face_id]
+                #             for face_id in self.non_fourgon_map[path_copy[i]]):
                     if path_copy[i] in face and \
                                     path_copy[i+1] in face and \
                                     path_copy[i+2] in face:
@@ -119,31 +118,7 @@ class Graph(object):
             '''
         return True
 
-    def faces_share_edges(self, current_path):
-        '''
-        last_three_vertices = current_path[-3:]
-        previous_three_faces = [set(self.faces_containing_arcs[vertex])
-                                for vertex in last_three_vertices]
-        intersection_all = set.intersection(*previous_three_faces)
-        return len(intersection_all) == 2
-        '''
-        # If it's shorter than 3, it can't have travelled through a face yet
-        if len(current_path) >= 3:
-            # Count the number of times each face appears by incrementing values
-            # of face_id's
-            containing_faces = defaultdict(lambda: 0)
-            for face in (self.faces_containing_arcs[v]
-                         for v in current_path[-3:]):
-                for f in face:
-                    containing_faces[f] += 1
-            # If there's any face_id has a vlue of three, that means that there
-            #  is one face that all three arcs bound. This is a trivial path
-            # so we discard it.
-            return 3 in containing_faces.values()
-
-        return False
-
-    def cycle_dfs(self, current_node,  start_node, current_path):
+    def cycle_dfs(self, current_node,  start_node,  graph, current_path):
         """
         Naive depth first search applied to the pseudo-dual graph of the
         reference curve. This sucker is terribly inefficient. More to come.
@@ -153,8 +128,15 @@ class Graph(object):
         :param current_path:
         :return:
         """
-        if self.faces_share_edges(current_path):
-            return []
+        #stderr.write(str(current_path)+'\n')
+        if len(current_path) >= 3:
+            last_three_vertices = current_path[-3:]
+            previous_three_faces = [set(self.faces_containing_arcs[vertex])
+                                    for vertex in last_three_vertices]
+            intersection_all = set.intersection(*previous_three_faces)
+            if len(intersection_all) == 2:
+                return []
+
         if current_node == start_node:
             if self.path_is_valid(current_path):
                 return [tuple(shift(list(current_path)))]
@@ -163,14 +145,14 @@ class Graph(object):
 
         else:
             loops = []
-            for adjacent_node in set(self.dual_graph[current_node]):
+            for adjacent_node in set(graph[current_node]):
                 current_path.append(adjacent_node)
-                self.dual_graph[current_node].remove(adjacent_node)
-                self.dual_graph[adjacent_node].remove(current_node)
+                graph[current_node].remove(adjacent_node)
+                graph[adjacent_node].remove(current_node)
                 loops += list(self.cycle_dfs(adjacent_node, start_node,
-                                             current_path))
-                self.dual_graph[current_node].append(adjacent_node)
-                self.dual_graph[adjacent_node].append(current_node)
+                                             graph, current_path))
+                graph[current_node].append(adjacent_node)
+                graph[adjacent_node].append(current_node)
                 current_path.pop()
             return loops
 
@@ -185,9 +167,9 @@ class Graph(object):
                          for item in sublist])
             for vertex in verts: #self.dual_graph:
                 for adjacent_vertex in self.dual_graph[vertex]:
-                    some_cycles = self.cycle_dfs(vertex, adjacent_vertex, [])
+                    some_cycles = self.cycle_dfs(vertex, adjacent_vertex,
+                                            self.dual_graph, [])
                     self.cycles = self.cycles | set(some_cycles)
-        self.cycles = set(self.cycles)
 
         return self.cycles
 

@@ -22,7 +22,7 @@ def do_profile(follow=[]):
 def get_dist(ladder):
     return CurvePair(ladder, compute=True).distance
 
-@do_profile(follow=[get_dist,CurvePair.__init__, Graph.cycle_dfs, CurvePair.compute_distance, Graph.path_is_valid])
+@do_profile(follow=[get_dist,Graph.faces_share_edges, Graph.cycle_dfs, CurvePair.compute_distance,Graph.find_cycles, Graph.path_is_valid])
 def profile_distance(ladder):
     return get_dist(ladder)
 
