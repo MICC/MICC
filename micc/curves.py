@@ -1,6 +1,5 @@
 from itertools import izip
 import random
-import numpy as np
 from micc.graph import Graph
 from micc.utils import cycle_to_ladder, ladder_to_cycle, relabel, shift, invert
 from copy import copy

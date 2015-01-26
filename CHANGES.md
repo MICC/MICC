@@ -7,3 +7,9 @@ Initial Release of MICC on PyPi
 August 12, 2014
 
 Improved performance and other updates to MICC.
+
+## 1.0
+January 26, 2015
+
+Updated entire package to run with only Python 2.7. Increases portability
+and usability. Tested and documented.

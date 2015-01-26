@@ -22,14 +22,15 @@ setup(
 '''
 
 setup(name='MICC',
-      version='0.1.5',
+      version='1.0',
       author='Matt Morse, Paul Glenn',
       author_email='mjmorse@buffalo.edu, paulglen@berkeley.edu',
       packages=['micc', 'micc.tests'],
       url='http://micc.github.io',
       download_url='https://github.com/micc/micc',
       license='LICENSE',
-      description='An implementation of the Birman-Margalit-Menasco Theorem, to be used in a experimental, exploratory manner.',
+      description='An implementation of the efficient geodesic theorem,'
+                  ' to be used in a experimental, exploratory manner.',
       long_description=open('README.rst').read(),
       install_requires=[
           "numpy== 1.9.1",

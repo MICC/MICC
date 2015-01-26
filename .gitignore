@@ -7,3 +7,4 @@ venv/
 *.pyo
 MICC.egg-info/
 *.out
+*.spec
