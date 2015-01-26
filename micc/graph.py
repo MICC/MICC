@@ -103,20 +103,12 @@ class Graph(object):
         for j in xrange(length):
             path_copy = path_copy[1:] + path_copy[:1]  # wtf
             for i in xrange(length-2):
-                #for face in self.non_fourgons:
                 for face in (self.non_fourgons[face_id]
                              for face_id in self.non_fourgon_map[path_copy[i]]):
                     if path_copy[i] in face and \
-                                    path_copy[i+1] in face and \
-                                    path_copy[i+2] in face:
+                            path_copy[i+1] in face and \
+                            path_copy[i+2] in face:
                         return False
-            '''
-            arc_triplets = (path_copy[i:i+3] for i in xrange(length-2))
-            for triplet in arc_triplets:
-                for face in self.non_fourgons:
-                    if set(triplet) <= set(face):
-                        return False
-            '''
         return True
 
     def faces_share_edges(self, current_path):

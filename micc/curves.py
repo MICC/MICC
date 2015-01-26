@@ -337,7 +337,7 @@ class CurvePair(object):
 
                 if curvepair_in_comp.genus <= self.genus:
                     complement_curves.append(curvepair_in_comp)
-                    # This create the short-list of curves in the complement
+                    # This creates the short-list of curves in the complement
                     # of the transverse curve intersection the reference curve.
 
             if recursive:
@@ -425,7 +425,8 @@ class CurvePair(object):
                surrounding_arcs = [region[-1]]+region[:2]
             else:
                 surrounding_arcs = region[arc_location-1:arc_location+2]
-            # Filter out arc_str and the other spurious arc
+            # Filter out arc_str and the other spurious arc to extract the
+            # true arc direction.
             direction = [edge[-1] for edge in surrounding_arcs
                          if int(edge[:-1]) == arc and
                          edge != arc_str].pop()
