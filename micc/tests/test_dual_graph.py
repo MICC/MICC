@@ -4,7 +4,7 @@ from sys import stderr
 from micc.curves import  CurvePair
 
 
-class PolygonalRegionTests(unittest.TestCase):
+class DualGraphTests(unittest.TestCase):
     """
     Verify that correctness of the new polygonal boundary algorithm. Using
     polygons determined by hand to validate correctness
@@ -26,7 +26,7 @@ class PolygonalRegionTests(unittest.TestCase):
             correct &= equal_adj_lists
         return correct
 
-    def test_1_polygons(self):
+    def test_1_dual_graph(self):
         true_polygons = [[0, 4, 5], [7, 3, 2], [6, 11, 10], [9, 8, 1], [5, 11],
                          [3, 4], [6, 1], [10, 9], [0, 7], [8, 2]]
 
@@ -46,7 +46,7 @@ class PolygonalRegionTests(unittest.TestCase):
         valid = self.check_valid(true_dual_graph, test_dual_graph)
         self.assertTrue(valid)
 
-    def test_2_polygons(self):
+    def test_2_dual_graph(self):
         true_dual_graph = {0: [5, 4, 3], 1: [2, 3, 4], 2: [1, 3, 2],
                            3: [0, 1, 2], 4: [0, 1, 5], 5: [0, 4, 5],
                            }
@@ -58,7 +58,7 @@ class PolygonalRegionTests(unittest.TestCase):
         valid = self.check_valid(true_dual_graph, test_dual_graph)
         self.assertTrue(valid)
 
-    def test_3_polygons(self):
+    def test_3_dual_graph(self):
 
         true_dual_graph = {0: [8, 11], 1: [12, 14, 9], 2: [13, 5, 10],
                            3: [6, 11], 4: [7, 12], 5: [2, 13, 8],
@@ -94,6 +94,26 @@ class PolygonalRegionTests(unittest.TestCase):
         valid = self.check_valid(true_dual_graph, test_dual_graph)
         self.assertTrue(valid)
 
+    def test_dual_graph_repeat_is_2(self):
+        true_dual_graph = {0+0j: [5+0j, 5+1j, 4+0j, 4+1j, 3+0j, 3+1j],
+                           0+1j: [5+0j, 5+1j, 4+0j, 4+1j, 3+0j, 3+1j],
+                           1+0j: [2+0j, 2+1j, 3+0j, 3+1j, 4+0j, 4+1j],
+                           1+1j: [2+0j, 2+1j, 3+0j, 3+1j, 4+0j, 4+1j],
+                           2+0j: [1+0j, 1+1j, 3+0j, 3+1j, 2+0j, 2+1j],
+                           2+1j: [1+0j, 1+1j, 3+0j, 3+1j, 2+0j, 2+1j],
+                           3+0j: [0+0j, 0+1j, 1+0j, 1+1j, 2+0j, 2+1j],
+                           3+1j: [0+0j, 0+1j, 1+0j, 1+1j, 2+0j, 2+1j],
+                           4+0j: [0+0j, 0+1j, 1+0j, 1+1j, 5+0j, 5+1j],
+                           4+1j: [0+0j, 0+1j, 1+0j, 1+1j, 5+0j, 5+1j],
+                           5+0j: [0+0j, 0+1j, 4+0j, 4+1j, 5+0j, 5+1j],
+                           5+1j: [0+0j, 0+1j, 4+0j, 4+1j, 5+0j, 5+1j]
+                       }
+        ladder = [[1, 4, 3, 4, 1, 6], [6, 5, 2, 3, 2, 5]]
+        curvepair = CurvePair(ladder, compute=False)
+        test_dual_graph, _ = curvepair.graph.create_dual_graph(
+            curvepair.concise_boundaries, repeat=2)
+        valid = self.check_valid(true_dual_graph, test_dual_graph)
+        self.assertTrue(valid)
     # TODO at least two more curves by hand
 
 if __name__ == '__main__':

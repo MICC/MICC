@@ -147,9 +147,12 @@ def cycle_to_ladder(cycle_rep):
 
     return ladder
 
+def complex_cmp(complex):
+    return complex.real + complex.imag
 
 def shift(path):
-    temp = path.index(min(path))
+    #temp = path.index(min([path]))
+    temp = path.index(min(path, key=complex_cmp))
     return path[temp:] + path[:temp]
 
 

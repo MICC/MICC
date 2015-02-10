@@ -1,7 +1,8 @@
 from itertools import izip
 import random
 from micc.graph import Graph
-from micc.utils import cycle_to_ladder, ladder_to_cycle, relabel, shift, invert
+from micc.utils import cycle_to_ladder, ladder_to_cycle, relabel, shift, invert, \
+    complex_cmp
 from copy import copy
 from sys import stderr
 
@@ -201,7 +202,8 @@ class CurvePair(object):
         compute: boolean indicating whether or not to compute distance
     """
 
-    def __init__(self, input_rep, compute=False, arc_path=None, *args, **kwargs):
+    def __init__(self, input_rep, compute=False, arc_path=None,
+                 recursive=False, *args, **kwargs):
         self.rigid_graph = None
         if arc_path:
             self.arc_path = arc_path
@@ -222,8 +224,8 @@ class CurvePair(object):
         self.graph = Graph(self.concise_boundaries, self.n)
 
         if compute:
-            self.distance, self.complementary_curves = \
-                self.compute_distance(self.graph)
+            self.distance, self.complementary_curves, self.graph = \
+                self.compute_distance(recursive=recursive)
 
 
     def boundary_reduction(self, verbose_boundaries):
@@ -272,7 +274,7 @@ class CurvePair(object):
             genus -= 1
         return genus
 
-    def compute_distance(self, graph, recursive=False):
+    def compute_distance(self, recursive=False):
         """
         Returns distance of the CurvePair object.
         :return: An integer distance (3, 4, etc.)
@@ -307,18 +309,6 @@ class CurvePair(object):
             return 3
 
         else:
-            cycles = self.graph.find_cycles()
-
-            # Quick removal of inverted paths:
-            cycles_no_inversion = set()
-            for cycle in cycles:
-                if invert(cycle) in cycles_no_inversion:
-                    continue
-                cycles_no_inversion.add(cycle)
-            cycles = cycles_no_inversion
-
-            complement_curves = []
-
             def is_valid(cycle):
                 n = len(cycle)
                 for i in xrange(n+1):
@@ -328,40 +318,60 @@ class CurvePair(object):
                         return False
                 return True
 
-            for cycle in cycles:
-                if not is_valid(cycle):
-                    continue
-                curvepair_in_comp = self.curvepair_from_arc_path(cycle,
-                                                        compute=recursive)
+            for rep in xrange(1, 2+1):  # max of distance 4
 
-                if curvepair_in_comp.genus <= self.genus:
-                    complement_curves.append(curvepair_in_comp)
-                    # This creates the short-list of curves in the complement
-                    # of the transverse curve intersection the reference curve.
+                # Create a graph of appropriate replication number
+                self.graph = Graph(self.concise_boundaries, self.n, repeat=rep)
+                cycles = self.graph.find_cycles()
 
-            if recursive:
-                distances = set([curvepair.distance for curvepair in
-                                 complement_curves])
+                # Quick removal of inverted paths:
+                cycles_no_inversion = set()
+                for cycle in cycles:
+                    if invert(cycle) in cycles_no_inversion:
+                        continue
+                    cycles_no_inversion.add(cycle)
+                cycles = cycles_no_inversion
 
-                if len(distances) == 1:
-                    d = distances.pop()
-                    distance = 'at least '+str(d+1)
+                for cycle in cycles:
+                    stderr.write(str([int(v.real) for v in cycle])+'\n')
+                stderr.write(str(len(cycles))+'\n')
+
+                complement_curves = []
+                for cycle in cycles:
+                    if not is_valid(cycle):
+                        continue
+                    curvepair_in_comp = self.curvepair_from_arc_path(cycle,
+                                                            compute=recursive)
+
+                    if curvepair_in_comp.genus <= self.genus:
+                        complement_curves.append(curvepair_in_comp)
+                        # This creates the short-list of curves in the
+                        # complement of the transverse curve intersection the
+                        # reference curve.
+
+                if recursive:
+                    distances = set([curvepair.distance for curvepair in
+                                     complement_curves])
+
+                    if len(distances) == 1:
+                        d = distances.pop()
+                        distance = 'at least '+str(d+1)
+                    else:
+                        d = min(distances)
+                        distance = d+1
+
                 else:
-                    d = min(distances)
-                    distance = d+1
+                    # we can only test for distance 3 and 'at least 4'
+                    genuses = set([curvepair.genus for curvepair in
+                                   complement_curves])
 
-            else:
-                # we can only test for distance 3 and 'at least 4'
-                genuses = set([curvepair.genus for curvepair in
-                               complement_curves])
-
-                if len(genuses) == 1:
-                    distance = 'at least '+str(4)
-                else:
-                    min_genus = min(genuses)
-                    if min_genus < self.genus:
-                        distance = 3
-        return distance, complement_curves
+                    if len(genuses) == 1:
+                        distance = 'at least '+str(4)
+                    else:
+                        min_genus = min(genuses)
+                        if min_genus < self.genus:
+                            distance = 3
+        return distance, complement_curves, self.graph
 
     def curvepair_from_arc_path(self, arc_path, compute=False):
         """
@@ -377,8 +387,8 @@ class CurvePair(object):
         :return: A child CurvePair whose intersections are determined by the
                 polygonal connections of the current CurvePair
         """
-        parent_arcs = sorted(arc_path)
-        child_arcs = range(len(parent_arcs))  # curves are labeled 0 - n-1
+        parent_arcs = sorted(arc_path, key=complex_cmp)
+        child_arcs = range(len(parent_arcs))  # arcs are labeled 0 - n-1
         # For easier access, we map the resulting child arcs to
         # the old parent arcs to keep track of what goes where
         map_parent_to_child = {p_arc: c_arc for c_arc, p_arc in
@@ -421,7 +431,7 @@ class CurvePair(object):
             arc_str = str(arc)+'R'
             arc_location = region.index(arc_str)  # unique edges so this works
             if arc_location == 0:
-               surrounding_arcs = [region[-1]]+region[:2]
+                surrounding_arcs = [region[-1]]+region[:2]
             else:
                 surrounding_arcs = region[arc_location-1:arc_location+2]
             # Filter out arc_str and the other spurious arc to extract the
@@ -433,11 +443,14 @@ class CurvePair(object):
 
         for i, (arc, next_arc) in enumerate(izip(arc_path, list(arc_path[1:]) +
                                             [arc_path[0]])):
-            region = find_region_with_arcs(arc, next_arc)
+            arc_id = int(arc.real)
+            next_arc_id = int(next_arc.real)
+
+            region = find_region_with_arcs(arc_id, next_arc_id)
 
             # Figure out where the edges are actually leading
-            arc_direction = find_direction(arc, region)
-            next_arc_direction = find_direction(next_arc, region)
+            arc_direction = find_direction(arc_id, region)
+            next_arc_direction = find_direction(next_arc_id, region)
             # Fill the ladder based on the directions
             # TODO make this less ugly and stupid
 
