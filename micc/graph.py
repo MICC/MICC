@@ -34,6 +34,7 @@ class Graph(object):
         stderr.write('boundaries:\n')
         for b in boundaries.values():
             stderr.write(str(b)+'\n')
+        stderr.write('endboundaries:\n')
         stderr.write('dual_graph:\n')
         for k, v in self.dual_graph.iteritems():
             stderr.write(str(k)+': '+str(v)+'\n')
@@ -335,23 +336,33 @@ class Graph(object):
         non_trivial_cycles = []
         trivial_cycles = []
 
+        cycle_index = defaultdict(lambda :[])
+
+        def update_cycle_reverse_index(cycle, cycle_index, index):
+            for arc in cycle:
+                cycle_index[arc].append(index)
+            return cycle_index
+
+        non_trivial_index = 0
         for cycle in cycle_basis:
             if len(set([v.real for v in cycle])) > 3:
                 non_trivial_cycles.append(cycle)
             else:
+
+                cycle_index = \
+                    update_cycle_reverse_index(cycle, cycle_index,
+                                               non_trivial_index)
+                non_trivial_index += 1
                 n = len(cycle)
                 edges_of_cycle = set([(cycle[i % n], cycle[(i+1) % n])
                                       for i in xrange(n)])
                 edges_of_cycle |= set([edge[::-1]for edge in edges_of_cycle])
                 trivial_cycles.append(edges_of_cycle)
-        #stderr.write(str(len(non_trivial_cycles))+'\n')
-
 
         # produce all possible additions of non-trivial basis elements
         p = powerset(non_trivial_cycles)
 
         for i, linear_combination in enumerate(p):
-            #stderr.write('iteration: '+str(i)+'\t'+str(linear_combination)+'\n')
             # We need to pull out the edges, both forward and backward, in order
             # to properly perform the symmetric difference of paths. The edges
             # define an ordering that can be recovered through post processing.
@@ -414,7 +425,7 @@ class Graph(object):
                 current_face_support_cycles = []
                 for face_id in shared_face_ids:
                     face = set(self.non_fourgons[face_id])
-                    len_face = len(face)
+                    num_support_cycles = floor(len(face))/2
                     # Pull out the edges that are actually in the face
                     # of interest
                     edge1_in_face = find_cycle_edge_in_face(cycle1_set, face)
@@ -426,13 +437,17 @@ class Graph(object):
                     possible_edges |= set([edge[::-1] for edge in
                                            possible_edges])
 
-                    for trivial_cycle in trivial_cycles:
+                    interest_cycles = []
+                    for arc in face:
+                        for index in cycle_index[arc]:
+                            interest_cycles.append(trivial_cycles[index])
+                    for trivial_cycle in interest_cycles: #trivial_cycles:
                         # Here we're looking for the trivial cycles that will
                         # glue the two non-trivial ones together. Therefore,
                         # we need a support cycle to have the same edge as the
                         # non-trivial one, plus another edge connecting one
                         # vertex of one non-trivial cycle to the other.
-                        if len(current_face_support_cycles) == floor(len_face)/2:
+                        if len(current_face_support_cycles) == num_support_cycles:
                             break
 
                         if (edge1_in_face in trivial_cycle or
@@ -447,14 +462,10 @@ class Graph(object):
                         '''
                 support_cycles += current_face_support_cycles
             cycles_to_add += support_cycles
-            #for cycle in cycles_to_add:
-            #    stderr.write('basis cycle: '+str(cycle)+'\n')
-            # perform the symmetric difference
+
             resulting_cycle = set()
             for cycle in cycles_to_add:
                 resulting_cycle ^= cycle
-            #stderr.write('symmetric difference\n')
-
 
             # remove the reversed edges
             i = 0
@@ -468,13 +479,9 @@ class Graph(object):
             if not resulting_cycle:
                 continue
 
-            #stderr.write('remove reverse edges\n')
-            #stderr.write(str(resulting_cycle)+'\n')
             edge_length = len(resulting_cycle)
             path = list(resulting_cycle.pop())
             while resulting_cycle:
-                #stderr.write(str(resulting_cycle)+'\n')
-                #stderr.write(str(path)+'\n')
                 current_vertex = path[-1]
                 end_vertex = path[0]
                 if current_vertex == end_vertex:
@@ -493,8 +500,6 @@ class Graph(object):
                 if self.faces_share_edges(path):
                     break
             path = path[:-1]
-            #if len(path) == edge_length:
-            #if self.path_is_valid(path):
             cycles.add(tuple(invert(path)))
             cycles.add(tuple(shift(path)))
         return cycles

@@ -310,15 +310,17 @@ class CurvePair(object):
 
         else:
             def is_valid(cycle):
+                if len(cycle) <= 3: #Equal?
+                    return False
                 n = len(cycle)
                 for i in xrange(n+1):
                     arc = cycle[i % n]
                     next_arc = cycle[(i+1) % n]
-                    if next_arc not in self.graph.dual_graph[arc]:
+                    if next_arc.real not in self.graph.dual_graph[arc.real]:
                         return False
                 return True
 
-            for rep in xrange(1, 2+1):  # max of distance 4
+            for rep in xrange(1, 2):  # max of distance 4
 
                 # Create a graph of appropriate replication number
                 self.graph = Graph(self.concise_boundaries, self.n, repeat=rep)
@@ -333,12 +335,14 @@ class CurvePair(object):
                 cycles = cycles_no_inversion
 
                 for cycle in cycles:
-                    stderr.write(str([int(v.real) for v in cycle])+'\n')
+                    stderr.write(str([v for v in cycle])+'\n')
                 stderr.write(str(len(cycles))+'\n')
 
                 complement_curves = []
                 for cycle in cycles:
                     if not is_valid(cycle):
+                        continue
+                    if not self.graph.path_is_valid(cycle):
                         continue
                     curvepair_in_comp = self.curvepair_from_arc_path(cycle,
                                                             compute=recursive)
@@ -388,6 +392,12 @@ class CurvePair(object):
                 polygonal connections of the current CurvePair
         """
         parent_arcs = sorted(arc_path, key=complex_cmp)
+
+        #stderr.write('regions:\n')
+        #for r in self.verbose_boundaries:
+        #    stderr.write(str(r)+'\n')
+        #stderr.write('parent_arcs: '+str(parent_arcs)+'\n')
+
         child_arcs = range(len(parent_arcs))  # arcs are labeled 0 - n-1
         # For easier access, we map the resulting child arcs to
         # the old parent arcs to keep track of what goes where
@@ -419,7 +429,7 @@ class CurvePair(object):
             # edges and get caught earlier on.
             current_str = str(current_arc)+'R'
             next_str = str(next_arc)+'R'
-
+            #stderr.write('find_region(...): '+str(current_arc)+'\t'+str(next_arc)+'\n')
             for region in [r for r in self.verbose_boundaries]:
                 if current_str in region and next_str in region:
                     return region
@@ -429,6 +439,7 @@ class CurvePair(object):
         def find_direction(arc, region):
             # Again looking for the R arcs
             arc_str = str(arc)+'R'
+
             arc_location = region.index(arc_str)  # unique edges so this works
             if arc_location == 0:
                 surrounding_arcs = [region[-1]]+region[:2]
@@ -441,6 +452,7 @@ class CurvePair(object):
                          edge != arc_str].pop()
             return direction
 
+        stderr.write('arc_path: '+str(arc_path)+'\n')
         for i, (arc, next_arc) in enumerate(izip(arc_path, list(arc_path[1:]) +
                                             [arc_path[0]])):
             arc_id = int(arc.real)
@@ -456,7 +468,10 @@ class CurvePair(object):
 
             child_ind = to_child(arc)
             next_child_ind = to_child(next_arc)
-
+            #stderr.write(str(region)+'\n')
+            #stderr.write(str(arc_id)+'\t'+str(next_arc_id)+'\t'
+            #             +str(child_ind)+'\t'+str(next_child_ind)+'\t'+
+            #             str(arc_direction)+'\t'+str(next_arc_direction)+'\n')
             if 'T' == arc_direction and 'T' == next_arc_direction:
                 ladder[0][child_ind] = i
                 ladder[0][next_child_ind] = i
@@ -472,6 +487,9 @@ class CurvePair(object):
             elif 'B' == arc_direction and 'B' == next_arc_direction:
                 ladder[1][child_ind] = i
                 ladder[1][next_child_ind] = i
+
+            #stderr.write(str(ladder[0])+'\n')
+            #stderr.write(str(ladder[1])+'\n')
 
         ladder[0] = [j+1 for j in ladder[0]]
         ladder[1] = [j+1 for j in ladder[1]]
