@@ -125,23 +125,52 @@ class Graph(object):
         if repeat >= 1:
             for arc, adj_list in dual_graph.iteritems():
                 # This means we have a 4-gon. We don't want to have total
-                # adjacency, since that's making the graph more complex
+                # adjacency, since that's making the graph more complex,
+                # so we only add the parallel arcs.
+
                 if len(adj_list) == 2:
                     for i in xrange(1, repeat):
                         complex_dual_graph[arc+i*1j] = [v+i*1j for v in adj_list]
                         complex_dual_graph[arc+0j] = [v+0j for v in adj_list]
-                        '''
-                        for adj_arc in list(adj_list):
-                            complex_dual_graph[arc+0j].append(adj_arc+0j)
-                            complex_dual_graph[arc+i*1j].append(adj_arc+i*1j)
-                        '''
                     continue
+
                 # add repetitions based on the number required.
                 for i in xrange(1, repeat):
                     complex_dual_graph[arc+i*1j] = [v+0j for v in adj_list]
                     for adj_arc in list(adj_list):
                         complex_dual_graph[arc+0j].append(adj_arc+i*1j)
                         complex_dual_graph[arc+i*1j].append(adj_arc+i*1j)
+            # We must iterate over the graph again to remove spurious edges
+            # at the boundary between 4-gons and >4-gons
+            for arc, adj_list in complex_dual_graph.iteritems():
+                # Yank out the >4-gons
+                if len(adj_list) > 2:
+                    for adj_arc in adj_list:
+                        adj_arc_adj_list = complex_dual_graph[adj_arc]
+                        # If the part is part of another 4-gon...
+                        if any(adj_arc.real in region for region in self.fourgons):
+                            arc_index = arc.imag
+                            for i in xrange(repeat):
+                                if i == arc_index:
+                                    continue
+                                to_remove = adj_arc.real+i*1j
+                                if to_remove in complex_dual_graph[arc]:
+                                    complex_dual_graph[arc].remove(to_remove)
+                        '''
+                        if len(adj_arc_adj_list) == 2:
+                            # remove edges connecting to parallel vertices
+                            arc_index = arc.imag
+                            for i in xrange(repeat):
+                                if i == arc_index:
+                                    continue
+                                to_remove = adj_arc.real+i*1j
+                                if to_remove in complex_dual_graph[arc]:
+                                    complex_dual_graph[arc].remove(to_remove)
+                                elif any(adj_arc.real in region
+                                         for region in self.fourgons):
+                                    complex_dual_graph[arc].remove(to_remove)
+                        '''
+
 
         return complex_dual_graph, faces_containing_arcs
 
@@ -347,6 +376,7 @@ class Graph(object):
         for cycle in cycle_basis:
             if len(set([v.real for v in cycle])) > 3:
                 non_trivial_cycles.append(cycle)
+                #stderr.write(str(cycle)+'\n')
             else:
 
                 cycle_index = \
@@ -414,18 +444,17 @@ class Graph(object):
                 # Determine which ids are shared among the two cycles
                 shared_face_ids = cycle1_face_ids & cycle2_face_ids
 
-                # it's possible we have more than one face shared between
-                # cycles. We have to include the triangles for each
-
                 def find_cycle_edge_in_face(cycle, face):
                     for edge in cycle:
                         if edge[0].real in face and edge[1].real in face:
                             return edge
                     return None
-                current_face_support_cycles = []
+
+                # it's possible we have more than one face shared between
+                # cycles. We have to include the triangles for each
                 for face_id in shared_face_ids:
+                    current_face_support_cycles = []
                     face = set(self.non_fourgons[face_id])
-                    num_support_cycles = floor(len(face))/2
                     # Pull out the edges that are actually in the face
                     # of interest
                     edge1_in_face = find_cycle_edge_in_face(cycle1_set, face)
@@ -436,37 +465,38 @@ class Graph(object):
                     possible_edges = set(product(edge1_in_face, edge2_in_face))
                     possible_edges |= set([edge[::-1] for edge in
                                            possible_edges])
-
-                    interest_cycles = []
-                    for arc in face:
-                        for index in cycle_index[arc]:
-                            interest_cycles.append(trivial_cycles[index])
-                    for trivial_cycle in interest_cycles: #trivial_cycles:
+                    interest_cycles = []  # TODO lazy evaluation
+                    #for arc in face:
+                    #    for index in cycle_index[arc]:
+                    #        interest_cycles.append(trivial_cycles[index])
+                    for trivial_cycle in trivial_cycles:
                         # Here we're looking for the trivial cycles that will
                         # glue the two non-trivial ones together. Therefore,
                         # we need a support cycle to have the same edge as the
                         # non-trivial one, plus another edge connecting one
                         # vertex of one non-trivial cycle to the other.
-                        if len(current_face_support_cycles) == num_support_cycles:
-                            break
-
+                        if len(current_face_support_cycles) == 2: break
                         if (edge1_in_face in trivial_cycle or
                             edge2_in_face in trivial_cycle) and \
                             possible_edges & trivial_cycle:
-                            current_face_support_cycles.append(trivial_cycle)
+                            if not current_face_support_cycles:
+                                current_face_support_cycles.append(trivial_cycle)
+                            elif set.intersection(*current_face_support_cycles) & trivial_cycle:
+                                current_face_support_cycles.append(trivial_cycle)
                         '''
                         #These are equal, you're an idiot
                         if edge2_in_face in trivial_cycle and connecting_edge:
                             current_face_support_cycles.append(trivial_cycle)
                             continue
                         '''
-                support_cycles += current_face_support_cycles
+                    support_cycles += current_face_support_cycles
             cycles_to_add += support_cycles
+            cycles_to_add = set([frozenset(c) for c in cycles_to_add])
 
             resulting_cycle = set()
             for cycle in cycles_to_add:
+                #stderr.write('subcycle: '+str([ (v[0], v[1]) for v in cycle])+'\t'+str(type(cycle))+'\n')
                 resulting_cycle ^= cycle
-
             # remove the reversed edges
             i = 0
             while i < len(resulting_cycle):

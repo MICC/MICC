@@ -31,6 +31,7 @@ class RigidGraph(object):
         ladder = kwargs.get('ladder', False)
         cycle = kwargs.get('cycle', False)
 
+
         if ladder:
             self.ladder_init(ladder)
         elif cycle:
@@ -320,10 +321,13 @@ class CurvePair(object):
                         return False
                 return True
 
-            for rep in xrange(1, 2):  # max of distance 4
+            for rep in xrange(1, 2+1):  # max of distance 4
 
                 # Create a graph of appropriate replication number
                 self.graph = Graph(self.concise_boundaries, self.n, repeat=rep)
+                stderr.write('dual_graph:\n')
+                for k, v in self.graph.dual_graph.iteritems():
+                    stderr.write(str(k)+': '+str(v)+'\n')
                 cycles = self.graph.find_cycles()
 
                 # Quick removal of inverted paths:
@@ -334,9 +338,9 @@ class CurvePair(object):
                     cycles_no_inversion.add(cycle)
                 cycles = cycles_no_inversion
 
-                for cycle in cycles:
-                    stderr.write(str([v for v in cycle])+'\n')
-                stderr.write(str(len(cycles))+'\n')
+                #for cycle in cycles:
+                #    stderr.write(str([v for v in cycle])+'\n')
+                #stderr.write(str(len(cycles))+'\n')
 
                 complement_curves = []
                 for cycle in cycles:
@@ -344,6 +348,12 @@ class CurvePair(object):
                         continue
                     if not self.graph.path_is_valid(cycle):
                         continue
+                    stderr.write(str([v for v in cycle])+'\n')
+                    if len(set([int(v.real) for v in cycle])) != len(cycle):
+                        stderr.write("true\n")
+                    else:
+                        stderr.write("false\n")
+
                     curvepair_in_comp = self.curvepair_from_arc_path(cycle,
                                                             compute=recursive)
 
@@ -397,12 +407,14 @@ class CurvePair(object):
         #for r in self.verbose_boundaries:
         #    stderr.write(str(r)+'\n')
         #stderr.write('parent_arcs: '+str(parent_arcs)+'\n')
+        #stderr.write('arc_path: '+str(arc_path)+'\n')
 
         child_arcs = range(len(parent_arcs))  # arcs are labeled 0 - n-1
         # For easier access, we map the resulting child arcs to
         # the old parent arcs to keep track of what goes where
         map_parent_to_child = {p_arc: c_arc for c_arc, p_arc in
                                izip(child_arcs, parent_arcs)}
+        #stderr.write('index map: '+str(map_parent_to_child)+'\n')
         to_child = lambda a: map_parent_to_child[a]
 
         # Recall that the reference arcs are labeled by the left endpoints.
@@ -430,10 +442,12 @@ class CurvePair(object):
             current_str = str(current_arc)+'R'
             next_str = str(next_arc)+'R'
             #stderr.write('find_region(...): '+str(current_arc)+'\t'+str(next_arc)+'\n')
+            r = None
             for region in [r for r in self.verbose_boundaries]:
                 if current_str in region and next_str in region:
-                    return region
-
+                    #stderr.write(str('found region: ')+str(region)+'\n')
+                    r = region
+            return r
         # Cleaner way to iterate over sequential arc pairs cyclically
 
         def find_direction(arc, region):
@@ -452,7 +466,6 @@ class CurvePair(object):
                          edge != arc_str].pop()
             return direction
 
-        stderr.write('arc_path: '+str(arc_path)+'\n')
         for i, (arc, next_arc) in enumerate(izip(arc_path, list(arc_path[1:]) +
                                             [arc_path[0]])):
             arc_id = int(arc.real)
@@ -463,14 +476,15 @@ class CurvePair(object):
             # Figure out where the edges are actually leading
             arc_direction = find_direction(arc_id, region)
             next_arc_direction = find_direction(next_arc_id, region)
+
             # Fill the ladder based on the directions
             # TODO make this less ugly and stupid
 
             child_ind = to_child(arc)
             next_child_ind = to_child(next_arc)
             #stderr.write(str(region)+'\n')
-            #stderr.write(str(arc_id)+'\t'+str(next_arc_id)+'\t'
-            #             +str(child_ind)+'\t'+str(next_child_ind)+'\t'+
+            #stderr.write(str(arc_id)+'\t'+str(next_arc_id)+'\n')
+            #stderr.write('indices: '+str(child_ind)+'\t'+str(next_child_ind)+'\t'+
             #             str(arc_direction)+'\t'+str(next_arc_direction)+'\n')
             if 'T' == arc_direction and 'T' == next_arc_direction:
                 ladder[0][child_ind] = i

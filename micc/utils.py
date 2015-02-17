@@ -147,10 +147,10 @@ def cycle_to_ladder(cycle_rep):
 
     return ladder
 
-def complex_cmp(complex):
+def complex_cmp(c):
     #oh so janky
-    return abs(complex)
-    #return complex.real + complex.imag
+    # weight the real part more so that 0+1j < 1+0j, etc.
+    return abs(complex(c.real+.1, c.imag))
 
 def shift(path):
     #temp = path.index(min([path]))

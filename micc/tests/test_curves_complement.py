@@ -26,6 +26,7 @@ class ComplementaryCurvesTests(unittest.TestCase):
         # loops:
         true_loops = [(1, 12, 4, 7, 10, 2, 15, 11, 3, 6, 9), (0, 8, 5, 13, 15), (1, 12, 4, 7, 16, 14, 6, 9), (2, 15, 11, 3, 14, 16, 10), (0, 11, 3, 6, 9, 1, 12, 4, 7, 10, 2, 13, 5, 8), (0, 11, 3, 14, 16, 10, 2, 13, 5, 8)]
         true_loops = [shift([(i-1) % 17 for i in loop]) for loop in true_loops]
+        stderr.write('true loops:\n')
         for loop in true_loops:
             stderr.write(str(loop)+'\n')
         test = CurvePair([[6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 1, 2, 3, 4, 17, 5],
@@ -34,8 +35,6 @@ class ComplementaryCurvesTests(unittest.TestCase):
 
         test_loops = [c.arc_path for c in test.complementary_curves]
         valid = self.check_valid(true_loops, test_loops)
-        for k,v in test.graph.dual_graph.iteritems():
-            stderr.write(str(k)+': '+str(v)+'\n')
         self.assertTrue(valid)
 
     def test_3(self):
