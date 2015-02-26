@@ -30,16 +30,6 @@ class Graph(object):
             self.create_dual_graph(self.boundaries, repeat=repeat)
         self.cycles = set()
         self.dual_graph_copy = deepcopy(self.dual_graph)
-        '''
-        stderr.write('boundaries:\n')
-        for b in boundaries.values():
-            stderr.write(str(b)+'\n')
-        stderr.write('endboundaries:\n')
-        stderr.write('dual_graph:\n')
-        for k, v in self.dual_graph.iteritems():
-            stderr.write(str(k)+': '+str(v)+'\n')
-        '''
-
 
     def create_dual_graph(self, boundaries, repeat=1):
         """
@@ -148,7 +138,9 @@ class Graph(object):
                     for adj_arc in adj_list:
                         adj_arc_adj_list = complex_dual_graph[adj_arc]
                         # If the part is part of another 4-gon...
-                        if any(adj_arc.real in region for region in self.fourgons):
+                        region_with_arc = [region for region in self.fourgons
+                                           if arc.real in region]
+                        if any(adj_arc.real in region for region in region_with_arc):
                             arc_index = arc.imag
                             for i in xrange(repeat):
                                 if i == arc_index:
@@ -156,21 +148,6 @@ class Graph(object):
                                 to_remove = adj_arc.real+i*1j
                                 if to_remove in complex_dual_graph[arc]:
                                     complex_dual_graph[arc].remove(to_remove)
-                        '''
-                        if len(adj_arc_adj_list) == 2:
-                            # remove edges connecting to parallel vertices
-                            arc_index = arc.imag
-                            for i in xrange(repeat):
-                                if i == arc_index:
-                                    continue
-                                to_remove = adj_arc.real+i*1j
-                                if to_remove in complex_dual_graph[arc]:
-                                    complex_dual_graph[arc].remove(to_remove)
-                                elif any(adj_arc.real in region
-                                         for region in self.fourgons):
-                                    complex_dual_graph[arc].remove(to_remove)
-                        '''
-
 
         return complex_dual_graph, faces_containing_arcs
 
@@ -365,7 +342,7 @@ class Graph(object):
         non_trivial_cycles = []
         trivial_cycles = []
 
-        cycle_index = defaultdict(lambda :[])
+        #cycle_index = defaultdict(lambda :[])
 
         def update_cycle_reverse_index(cycle, cycle_index, index):
             for arc in cycle:
@@ -379,9 +356,9 @@ class Graph(object):
                 #stderr.write(str(cycle)+'\n')
             else:
 
-                cycle_index = \
-                    update_cycle_reverse_index(cycle, cycle_index,
-                                               non_trivial_index)
+                #cycle_index = \
+                #    update_cycle_reverse_index(cycle, cycle_index,
+                #                               non_trivial_index)
                 non_trivial_index += 1
                 n = len(cycle)
                 edges_of_cycle = set([(cycle[i % n], cycle[(i+1) % n])
@@ -465,10 +442,7 @@ class Graph(object):
                     possible_edges = set(product(edge1_in_face, edge2_in_face))
                     possible_edges |= set([edge[::-1] for edge in
                                            possible_edges])
-                    interest_cycles = []  # TODO lazy evaluation
-                    #for arc in face:
-                    #    for index in cycle_index[arc]:
-                    #        interest_cycles.append(trivial_cycles[index])
+                    # TODO lazy evaluation
                     for trivial_cycle in trivial_cycles:
                         # Here we're looking for the trivial cycles that will
                         # glue the two non-trivial ones together. Therefore,
@@ -483,20 +457,15 @@ class Graph(object):
                                 current_face_support_cycles.append(trivial_cycle)
                             elif set.intersection(*current_face_support_cycles) & trivial_cycle:
                                 current_face_support_cycles.append(trivial_cycle)
-                        '''
-                        #These are equal, you're an idiot
-                        if edge2_in_face in trivial_cycle and connecting_edge:
-                            current_face_support_cycles.append(trivial_cycle)
-                            continue
-                        '''
+
                     support_cycles += current_face_support_cycles
             cycles_to_add += support_cycles
             cycles_to_add = set([frozenset(c) for c in cycles_to_add])
 
             resulting_cycle = set()
             for cycle in cycles_to_add:
-                #stderr.write('subcycle: '+str([ (v[0], v[1]) for v in cycle])+'\t'+str(type(cycle))+'\n')
                 resulting_cycle ^= cycle
+
             # remove the reversed edges
             i = 0
             while i < len(resulting_cycle):

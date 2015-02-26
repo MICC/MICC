@@ -321,13 +321,11 @@ class CurvePair(object):
                         return False
                 return True
 
-            for rep in xrange(1, 2+1):  # max of distance 4
+            for rep in xrange(1, 2):  # max of distance 4
 
                 # Create a graph of appropriate replication number
                 self.graph = Graph(self.concise_boundaries, self.n, repeat=rep)
-                stderr.write('dual_graph:\n')
-                for k, v in self.graph.dual_graph.iteritems():
-                    stderr.write(str(k)+': '+str(v)+'\n')
+
                 cycles = self.graph.find_cycles()
 
                 # Quick removal of inverted paths:
@@ -348,11 +346,6 @@ class CurvePair(object):
                         continue
                     if not self.graph.path_is_valid(cycle):
                         continue
-                    stderr.write(str([v for v in cycle])+'\n')
-                    if len(set([int(v.real) for v in cycle])) != len(cycle):
-                        stderr.write("true\n")
-                    else:
-                        stderr.write("false\n")
 
                     curvepair_in_comp = self.curvepair_from_arc_path(cycle,
                                                             compute=recursive)

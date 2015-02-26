@@ -64,7 +64,6 @@ class DistanceTests(unittest.TestCase):
                          [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 13, 12, 11, 10, 9]],
                          compute=True)
         self.assertEqual(test.distance, 'at least 4')
-    '''
     def test_hempel(self):
         ladder = [[1, 7, 18, 24, 5, 16, 12, 8, 19, 25, 6, 17, 23, 4, 15, 11, 22, 3, 14, 10, 21, 2, 13, 9, 20],
           [25, 6, 17, 23, 4, 15, 11, 7, 18, 24, 5, 16, 22, 3, 14, 10, 21, 2, 13, 9, 20, 1, 12, 8, 19]]
@@ -72,4 +71,3 @@ class DistanceTests(unittest.TestCase):
         for curve in test.complementary_curves:
             stderr.write(str(curve.arc_path)+'\n')
         self.assertEqual(test.distance, 'at least 4')
-    '''
