@@ -35,6 +35,7 @@ setup(name='MICC',
       install_requires=[
           "numpy== 1.9.1",
           "nose >= 1.3.1",
+          "networkx==1.8.1",
           "rednose"
       ],
       test_suite="nose.collector")

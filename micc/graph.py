@@ -367,8 +367,9 @@ class Graph(object):
                 trivial_cycles.append(edges_of_cycle)
 
         # produce all possible additions of non-trivial basis elements
-        p = powerset(non_trivial_cycles)
-
+        #p = powerset(non_trivial_cycles)
+        p = powerset(cycle_basis)
+        '''
         for i, linear_combination in enumerate(p):
             # We need to pull out the edges, both forward and backward, in order
             # to properly perform the symmetric difference of paths. The edges
@@ -461,7 +462,7 @@ class Graph(object):
                     support_cycles += current_face_support_cycles
             cycles_to_add += support_cycles
             cycles_to_add = set([frozenset(c) for c in cycles_to_add])
-
+            '''
             resulting_cycle = set()
             for cycle in cycles_to_add:
                 resulting_cycle ^= cycle
