@@ -30,6 +30,10 @@ class Graph(object):
             self.create_dual_graph(self.boundaries, repeat=repeat)
         self.cycles = set()
         self.dual_graph_copy = deepcopy(self.dual_graph)
+        # stderr.write('dualgraph\n')
+        # for k,v in self.dual_graph.iteritems():
+        #     stderr.write(str(k)+': '+str(v)+'\n')
+        # stderr.write('\n')
 
     def create_dual_graph(self, boundaries, repeat=1):
         """
@@ -114,11 +118,10 @@ class Graph(object):
                       dual_graph.iteritems()}
         if repeat >= 1:
             for arc, adj_list in dual_graph.iteritems():
-                # This means we have a 4-gon. We don't want to have total
-                # adjacency, since that's making the graph more complex,
-                # so we only add the parallel arcs.
-
                 if len(adj_list) == 2:
+                # This means we the arc is in a 4-gon. We don't want to have
+                # total adjacency, since that's making the graph more complex,
+                # so we only add the parallel arcs.
                     for i in xrange(1, repeat):
                         complex_dual_graph[arc+i*1j] = [v+i*1j for v in adj_list]
                         complex_dual_graph[arc+0j] = [v+0j for v in adj_list]
@@ -127,6 +130,8 @@ class Graph(object):
                 # add repetitions based on the number required.
                 for i in xrange(1, repeat):
                     complex_dual_graph[arc+i*1j] = [v+0j for v in adj_list]
+                    complex_dual_graph[arc+i*1j].append(arc+0j)
+                    complex_dual_graph[arc+0j].append(arc+i*1j)
                     for adj_arc in list(adj_list):
                         complex_dual_graph[arc+0j].append(adj_arc+i*1j)
                         complex_dual_graph[arc+i*1j].append(adj_arc+i*1j)
@@ -136,11 +141,13 @@ class Graph(object):
                 # Yank out the >4-gons
                 if len(adj_list) > 2:
                     for adj_arc in adj_list:
-                        adj_arc_adj_list = complex_dual_graph[adj_arc]
-                        # If the part is part of another 4-gon...
                         region_with_arc = [region for region in self.fourgons
                                            if arc.real in region]
-                        if any(adj_arc.real in region for region in region_with_arc):
+                        # If the part is part of another 4-gon...
+                        if any(adj_arc.real in region
+                               for region in region_with_arc) and\
+                               adj_arc.real != arc.real:
+                            # ... remove the extra edges
                             arc_index = arc.imag
                             for i in xrange(repeat):
                                 if i == arc_index:
@@ -191,7 +198,7 @@ class Graph(object):
                     #if path_copy[i] in face and \
                     #        path_copy[i+1] in face and \
                     #        path_copy[i+2] in face:
-                    if set(path_copy[i:i+3]) <=set(face):
+                    if set(path_copy[i:i+3]) <= set(face):
                         return False
         return True
 
@@ -212,7 +219,7 @@ class Graph(object):
                          current_path[-3:]):
                 for f in face:
                     containing_faces[f] += 1
-            # If there's any face_id has a vlue of three, that means that there
+            # If there's any face_id has a value of three, that means that there
             #  is one face that all three arcs bound. This is a trivial path
             # so we discard it.
             return 3 in containing_faces.values()
@@ -352,6 +359,7 @@ class Graph(object):
         non_trivial_index = 0
         for cycle in cycle_basis:
             if len(set([v.real for v in cycle])) > 3:
+                cycles.add(tuple(cycle))
                 non_trivial_cycles.append(cycle)
                 #stderr.write(str(cycle)+'\n')
             else:
@@ -367,9 +375,7 @@ class Graph(object):
                 trivial_cycles.append(edges_of_cycle)
 
         # produce all possible additions of non-trivial basis elements
-        #p = powerset(non_trivial_cycles)
-        p = powerset(cycle_basis)
-        '''
+        p = powerset(non_trivial_cycles)
         for i, linear_combination in enumerate(p):
             # We need to pull out the edges, both forward and backward, in order
             # to properly perform the symmetric difference of paths. The edges
@@ -462,7 +468,6 @@ class Graph(object):
                     support_cycles += current_face_support_cycles
             cycles_to_add += support_cycles
             cycles_to_add = set([frozenset(c) for c in cycles_to_add])
-            '''
             resulting_cycle = set()
             for cycle in cycles_to_add:
                 resulting_cycle ^= cycle

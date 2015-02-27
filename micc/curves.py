@@ -321,7 +321,7 @@ class CurvePair(object):
                         return False
                 return True
 
-            for rep in xrange(1, 2):  # max of distance 4
+            for rep in xrange(1, 2+1):  # max of distance 4
 
                 # Create a graph of appropriate replication number
                 self.graph = Graph(self.concise_boundaries, self.n, repeat=rep)
@@ -342,6 +342,7 @@ class CurvePair(object):
 
                 complement_curves = []
                 for cycle in cycles:
+                    stderr.write(str([int(v.real) for v in cycle])+'\n')
                     if not is_valid(cycle):
                         continue
                     if not self.graph.path_is_valid(cycle):
