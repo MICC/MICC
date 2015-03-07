@@ -362,6 +362,19 @@ class Graph(object):
         return self.cycles
 
     def cycle_basis_linear_combination(self, graph, repeat=1):
+
+
+        def cycle_vertices_to_edges(cycle):
+            n = len(cycle)
+
+            # make a list of edges
+            edges_of_cycle = set([(cycle[i % n], cycle[(i+1) % n])
+                                  for i in xrange(n)])
+
+            #add in the reverse edges
+            edges_of_cycle |= set([edge[::-1]for edge in edges_of_cycle])
+            return edges_of_cycle
+
         def produce_spanning_set(graph, rep, boundaries):
             '''
             The intention here is to produce a set of cycles that spans the same
@@ -376,6 +389,8 @@ class Graph(object):
                 3. all possible triangles of each 2n-sided polygonal regions
             :return: Structured spanning set of cycles
             '''
+
+
             def generate_trivial_cycles(rep, boundaries):
                 trivial_cycles = []
                 for boundary in boundaries:
@@ -386,10 +401,7 @@ class Graph(object):
 
                 trivial_cycles_edges = []
                 for cycle in trivial_cycles:
-                    n = len(cycle)
-                    edges_of_cycle = set([(cycle[i % n], cycle[(i+1) % n])
-                                          for i in xrange(n)])
-                    edges_of_cycle |= set([edge[::-1]for edge in edges_of_cycle])
+                    edges_of_cycle = cycle_vertices_to_edges(cycle)
                     trivial_cycles_edges.append(edges_of_cycle)
 
                 return trivial_cycles_edges
@@ -401,8 +413,10 @@ class Graph(object):
                 stderr.write(str(d3_graph)+'\n')
                 nx_graph = nx.Graph(d3_graph)
                 cycle_basis = nx.cycle_basis(nx_graph)
+
                 #pull out the ones of length 3 or more
                 cycles = [c for c in cycle_basis if len(c) >= 3]
+
                 # remove the cycles that are strictly contained in a single
                 # polygon
                 d3_non_trivial_cycles = []
@@ -415,11 +429,12 @@ class Graph(object):
                 non_trivial_cycles = []
                 for cycle in d3_non_trivial_cycles:
                     for i in range(rep):
-                        #stderr.write('shit'+str(i)+'\n')
                         parallel_cycle = [arc+i*1j for arc in cycle]
+
                         # this produces (v_1+i*j, v_2+i*j, ... v_k+i*j), which
                         # is our parallel copy of the original cycle
                         non_trivial_cycles.append(parallel_cycle)
+
                 return non_trivial_cycles
 
             return generate_trivial_cycles(rep, boundaries),\
@@ -469,39 +484,50 @@ class Graph(object):
         # produce all possible additions of non-trivial basis elements
         p = powerset(non_trivial_cycles)
         for i, linear_combination in enumerate(p):
+            stderr.write('lin_comb_num: '+str(i)+'\n')
+
             # We need to pull out the edges, both forward and backward, in order
             # to properly perform the symmetric difference of paths. The edges
             # define an ordering that can be recovered through post processing.
             cycles_to_add = []
+
+            # There are three possible operations for each face shared between
+            # two cycles. Therefore, for each linear combination of non-trivial
+            # cycles, we again need all possible surgeries on these cycles.
+
             #stderr.write('nontrivial cycles:\n')
             for cycle in linear_combination:
                 #stderr.write(str(cycle)+'\n')
-                n = len(cycle)
-                mod_n = lambda val: val % n   # because I'm lazy
-
-                # make a list of edges
-                edges_of_cycle = [(cycle[mod_n(i)], cycle[mod_n(i+1)])
-                                  for i in xrange(n)]
-                # add in the reverse of all the edges
-                edges_of_cycle += [edge[::-1]for edge in edges_of_cycle]
-
+                edges_of_cycle = cycle_vertices_to_edges(cycle)
                 cycles_to_add.append(set(edges_of_cycle))
             #stderr.write('trivial cycles:\n')
 
             # Now that we have the cycles we're interested in, we need to
-            # determine the triangles in the complete subgraphs to "glue" these
+            # determine the cycles in the complete subgraphs to surger these
             # larger cycles together. Some of these are in non_trivial_cycles,
-            # but it's possible that the triangles needed at this step are not
+            # but it's possible that the cycles needed at this step are not
             # in that list. Since the set of all possible triangles in all
             # complete subgraphs spans the same space as the original arbitrary
             # basis, we can hand-pick the ones we need for this operation.
-            # We do so here.
+
+            # Even more so, we can determine exactly the three cycles we need to
+            # produce the three possible surgeries on two cycles. The can be
+            # achieved through iterated cartesian products of interest edges.
+            # We elaborate below.
+
+            # Note that because we need to perform 3 different surgeries per
+            # face shared between each pair of cycles, and that we're initially
+            # using cycle indices instead of the cycles themselves, we will
+            # keep track of which cycles are needed to combine each pair of
+            # cycles in a dictionary, and pull them out later to symmetric
+            # difference them all at once.
+            surgery_cycles = {}
 
             # The first order of business is to determine in which face
             # these cycles intersect, pairwise (addition is a binary operation).
-            support_cycles = []
             for cycle_id1, cycle_id2 in\
                     combinations(range(len(cycles_to_add)), 2):
+                #stderr.write('cycleids: '+str(cycle_id1)+' '+str(cycle_id2)+'\n')
                 cycle1_list = linear_combination[cycle_id1]
                 cycle2_list = linear_combination[cycle_id2]
                 #if set([v.real for v in cycle1_list]) ==\
@@ -530,8 +556,42 @@ class Graph(object):
                     return None
 
                 # it's possible we have more than one face shared between
-                # cycles. We have to include the triangles for each
+                # cycles. We have to include the cycles for each
                 for face_id in shared_face_ids:
+                    current_face_surgery_cycles = []
+                    face = set(self.non_fourgons[face_id])
+                    # Pull out the edges that are actually in the face
+                    # of interest
+                    edge1_in_face = find_cycle_edge_in_face(cycle1_set, face)
+                    edge2_in_face = find_cycle_edge_in_face(cycle2_set, face)
+                    if not (edge1_in_face and edge2_in_face):
+                        continue
+
+                    # One should note here that the cartesian product of the
+                    # edges (as collections of vertices) produce one of three
+                    # surgery cycles.
+                    surger_cycle1 = set(product(edge1_in_face, edge2_in_face))
+                    surger_cycle1 |= set([e[::-1] for e in surger_cycle1])
+                    current_face_surgery_cycles.append(surger_cycle1)
+
+                    # Then, of the edges in that surgery cycle, pulling out the
+                    # pairs of edges whose element-wise union is the four
+                    # original vertices (hence len(...) == 4), the cartesian
+                    # product of these edge pairs produce the other two surgery
+                    # cycles we need.
+                    for edge_pair in combinations(surger_cycle1, 2):
+                        e1 = set(edge_pair[0])
+                        e2 = set(edge_pair[1])
+                        if len(set.union(e1, e2)) == 4:
+                            alt_surger_cycle = set(product(*edge_pair))
+                            alt_surger_cycle |= set([e[::-1] for e in alt_surger_cycle])
+                            current_face_surgery_cycles.append(alt_surger_cycle)
+
+                    # We keep track of what cycles are needed to surger the two
+                    # cycles in a given face.
+                    surgery_cycles[(cycle_id1, cycle_id2, face_id)] =\
+                                                    current_face_surgery_cycles
+                    '''
                     current_face_support_cycles = []
                     face = set(self.non_fourgons[face_id])
                     # Pull out the edges that are actually in the face
@@ -562,51 +622,56 @@ class Graph(object):
                             elif set.intersection(*current_face_support_cycles) & trivial_cycle:
                                 current_face_support_cycles.append(trivial_cycle)
                                 stderr.write(str(trivial_cycle)+'\n')
-
                     support_cycles += current_face_support_cycles
 
-            cycles_to_add += support_cycles
-            cycles_to_add = set([frozenset(c) for c in cycles_to_add])
-            resulting_cycle = set()
-            for cycle in cycles_to_add:
+                    cycles_to_add += support_cycles
+                    '''
+            #stderr.write('surgery cycles...\n')
+            #for k, v in surgery_cycles.iteritems():
+            #    stderr.write(str(k)+': '+str(v)+'\n')
+            #stderr.write('\n')
+            for curve_surgery_cycles in product(*surgery_cycles.values()):
+                cycles_to_add_w_surgeries = \
+                    cycles_to_add + list(curve_surgery_cycles)
+                #cycles_to_add_w_surgeries =\
+                #    set([frozenset(c) for c in cycles_to_add_w_surgeries])
+                resulting_cycle = set()
+                for cycle in cycles_to_add_w_surgeries:
 
-                resulting_cycle ^= cycle
+                    resulting_cycle ^= cycle
 
-            # remove the reversed edges
-            i = 0
-            while i < len(resulting_cycle):
-                el = resulting_cycle.pop()
-                if el[::-1] in resulting_cycle:
+                # remove the reversed edges
+                #stderr.write('what the fuckbefore\n'+str(resulting_cycle)+'\n')
+                #resulting_cycle = set([tuple(edge) for edge in set(frozenset(e) for e in resulting_cycle)])
+                #stderr.write('what the fuck\n'+str(resulting_cycle)+'\n')
+
+                if not resulting_cycle:
                     continue
-                else:
-                    resulting_cycle.add(el)
-                i += 1
-            if not resulting_cycle:
-                continue
 
-            edge_length = len(resulting_cycle)
-            path = list(resulting_cycle.pop())
-            while resulting_cycle:
-                current_vertex = path[-1]
-                end_vertex = path[0]
-                if current_vertex == end_vertex:
-                    #path = path[:-1]
-                    break
+                cycle_graph = defaultdict(set)
                 for edge in resulting_cycle:
-                    # if this is the next edge...
-                    if current_vertex in edge:
-                        # add the next vertex to the path
-                        if current_vertex == edge[0]:
-                            path.append(edge[1])
-                        else:
-                            path.append(edge[0])
-                        resulting_cycle.remove(edge)
-                        break
-                if self.faces_share_edges(path):
-                    break
-            path = path[:-1]
-            cycles.add(tuple(invert(path)))
-            cycles.add(tuple(shift(path)))
-            stderr.write('resulting cycle:\n')
-            stderr.write(str(tuple(shift(path)))+'\n\n')
+                    cycle_graph[edge[0]].add(edge[1])
+                    cycle_graph[edge[1]].add(edge[0])
+
+                if any(len(v) > 2 for v in cycle_graph.itervalues()):
+                    continue
+
+                path = list(resulting_cycle.pop())
+                current_vertex = path[-1]
+                start_vertex = path[0]
+                previous_vertex = start_vertex
+
+                while start_vertex != current_vertex:
+
+                    next_vertex = [v for v in cycle_graph[current_vertex]
+                                   if v != previous_vertex]
+                    previous_vertex = current_vertex
+                    current_vertex = next_vertex[0]
+                    path.append(next_vertex[0])
+                path = path[:-1]
+                #cycles.add(tuple(invert(path)))
+                cycles.add(tuple(shift(path)))
+
+            if i >=30: break
+
         return cycles
