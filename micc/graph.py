@@ -26,10 +26,12 @@ class Graph(object):
         self.n = n
         self.repeat = repeat
         self.boundaries = boundaries
+        self._d3_dual_graph = None#self.create_dual_graph(self.boundaries)
         self.dual_graph, self.faces_containing_arcs = \
             self.create_dual_graph(self.boundaries, repeat=repeat)
         self.cycles = set()
         self.dual_graph_copy = deepcopy(self.dual_graph)
+        #self._d3_cycles = self.find_d3_cycles()
         # stderr.write('dualgraph\n')
         # for k,v in self.dual_graph.iteritems():
         #     stderr.write(str(k)+': '+str(v)+'\n')
@@ -116,6 +118,7 @@ class Graph(object):
         # Change types to complex
         complex_dual_graph = {k+0j: [val+0j for val in v] for k, v in
                       dual_graph.iteritems()}
+        self._d3_dual_graph = deepcopy(complex_dual_graph)
         if repeat >= 1:
             for arc, adj_list in dual_graph.iteritems():
                 if len(adj_list) == 2:
@@ -274,32 +277,57 @@ class Graph(object):
         loops = []
         if not current_path:
             current_path.append(current_node)
-            self.dual_graph_copy[start_node].remove(current_node)
-            self.dual_graph_copy[current_node].remove(start_node)
+            self._d3_dual_graph_copy[start_node].remove(current_node)
+            self._d3_dual_graph_copy[current_node].remove(start_node)
             loops += list(self.cycle_dfs(current_node, start_node,
                                          current_path))
-            self.dual_graph_copy[start_node].append(current_node)
-            self.dual_graph_copy[current_node].append(start_node)
+            self._d3_dual_graph_copy[start_node].append(current_node)
+            self._d3_dual_graph_copy[current_node].append(start_node)
             current_path.pop()
         else:
             #if len(current_path) > 1:
             #    self.trim_dual_graph(self.dual_graph_copy, current_path)
 
-            for adjacent_node in set(self.dual_graph_copy[current_node]):
+            for adjacent_node in set(self._d3_dual_graph_copy[current_node]):
                 current_path.append(adjacent_node)
-                self.dual_graph_copy[current_node].remove(adjacent_node)
-                self.dual_graph_copy[adjacent_node].remove(current_node)
+                self._d3_dual_graph_copy[current_node].remove(adjacent_node)
+                self._d3_dual_graph_copy[adjacent_node].remove(current_node)
                 loops += list(self.cycle_dfs(adjacent_node, start_node,
                                              current_path))
-                self.dual_graph_copy[current_node].append(adjacent_node)
-                self.dual_graph_copy[adjacent_node].append(current_node)
+                self._d3_dual_graph_copy[current_node].append(adjacent_node)
+                self._d3_dual_graph_copy[adjacent_node].append(current_node)
                 current_path.pop()
 
             #if len(current_path) > 1:
             #    self.untrim_dual_graph(self.dual_graph_copy, current_path)
         return loops
 
-    def find_cycles(self):
+    def find_d3_cycles(self):
+        def remove_vertex_from_graph(vertex, graph):
+            # The this removes vertices that have been previously visited in
+            # the total traversal. Finding all paths starting at a vertex
+            # ultimately finds all paths including that vertex, up to cyclic
+            # ordering. Removing them reduces the complexity of the search.
+            del graph[vertex]
+            for adjacency_list in graph.itervalues():
+                if vertex in adjacency_list:
+                    adjacency_list.remove(vertex)
+            return graph
+        d3_cycles = set()
+        for vertex in self._d3_dual_graph:
+
+            if vertex in self._d3_dual_graph_copy:
+                for adjacent_vertex in self._d3_dual_graph_copy[vertex]:
+                    some_cycles = self.cycle_dfs(adjacent_vertex, vertex,[])
+                    d3_cycles = d3_cycles | set(some_cycles)
+
+            self._d3_dual_graph_copy = \
+                remove_vertex_from_graph(vertex, self._d3_dual_graph_copy)
+
+        d3_cycles = set(d3_cycles)
+        return d3_cycles
+
+    def find_cycles(self, repeat=1):
         """
         Finds all possible cycles in the pseudo-dual graph and removes
         remove duplicates to the fullest extend possible.
@@ -330,21 +358,84 @@ class Graph(object):
 
         self.cycles = set(self.cycles)
         '''
-        self.cycles = self.cycle_basis_linear_combination(self.dual_graph)
+        self.cycles = self.cycle_basis_linear_combination(self.dual_graph, repeat=repeat)
         return self.cycles
 
-    def cycle_basis_linear_combination(self, graph):
+    def cycle_basis_linear_combination(self, graph, repeat=1):
+        def produce_spanning_set(graph, rep, boundaries):
+            '''
+            The intention here is to produce a set of cycles that spans the same
+            space as the space spanned by the cycle basis. There will be more
+            elements of this spanning set, but it's much more structured and
+            easier to come up with a generic algorithm on this set.
+
+            This spanning set will contain:
+                1. the non-trivial basis cycles in the dual graph to compute
+                    distance 3
+                2. parallel copies of the cycles in 1.
+                3. all possible triangles of each 2n-sided polygonal regions
+            :return: Structured spanning set of cycles
+            '''
+            def generate_trivial_cycles(rep, boundaries):
+                trivial_cycles = []
+                for boundary in boundaries:
+                    repeated_boundary = []
+                    for i in range(rep):
+                        repeated_boundary += [v + i*1j for v in boundary]
+                    trivial_cycles += list(combinations(repeated_boundary, 3))
+
+                trivial_cycles_edges = []
+                for cycle in trivial_cycles:
+                    n = len(cycle)
+                    edges_of_cycle = set([(cycle[i % n], cycle[(i+1) % n])
+                                          for i in xrange(n)])
+                    edges_of_cycle |= set([edge[::-1]for edge in edges_of_cycle])
+                    trivial_cycles_edges.append(edges_of_cycle)
+
+                return trivial_cycles_edges
+
+            def generate_nontrivial_cycles(rep, d3_graph):
+                # determine the homotopically nontrivial cycles on the original
+                # graph (passing through arcs at most once) (Note: these are
+                # already in complex form (v_1+0j, v_2+0j, ... v_k+0j)
+                stderr.write(str(d3_graph)+'\n')
+                nx_graph = nx.Graph(d3_graph)
+                cycle_basis = nx.cycle_basis(nx_graph)
+                #pull out the ones of length 3 or more
+                cycles = [c for c in cycle_basis if len(c) >= 3]
+                # remove the cycles that are strictly contained in a single
+                # polygon
+                d3_non_trivial_cycles = []
+                for cycle in cycles:
+                    regions_of_cycle = set.intersection(*[set(self.non_fourgon_map[arc])
+                                                   for arc in cycle])
+                    if len(regions_of_cycle) == 0:
+                        d3_non_trivial_cycles.append(cycle)
+
+                non_trivial_cycles = []
+                for cycle in d3_non_trivial_cycles:
+                    for i in range(rep):
+                        #stderr.write('shit'+str(i)+'\n')
+                        parallel_cycle = [arc+i*1j for arc in cycle]
+                        # this produces (v_1+i*j, v_2+i*j, ... v_k+i*j), which
+                        # is our parallel copy of the original cycle
+                        non_trivial_cycles.append(parallel_cycle)
+                return non_trivial_cycles
+
+            return generate_trivial_cycles(rep, boundaries),\
+                   generate_nontrivial_cycles(rep, graph)
+
         nx_graph = nx.Graph(graph)
         cycle_basis = nx.cycle_basis(nx_graph)
         cycles = set()
         stderr.write(str(len(cycle_basis))+'\n')
-
         # from itertools cookbook
         def powerset(iterable):
             # powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)
             s = list(iterable)
             return chain.from_iterable(combinations(s, r)
                                        for r in range(len(s)+1))
+        '''
         # to make me feel better later
         non_trivial_cycles = []
         trivial_cycles = []
@@ -356,7 +447,6 @@ class Graph(object):
                 cycle_index[arc].append(index)
             return cycle_index
 
-        non_trivial_index = 0
         for cycle in cycle_basis:
             if len(set([v.real for v in cycle])) > 3:
                 cycles.add(tuple(cycle))
@@ -367,13 +457,15 @@ class Graph(object):
                 #cycle_index = \
                 #    update_cycle_reverse_index(cycle, cycle_index,
                 #                               non_trivial_index)
-                non_trivial_index += 1
                 n = len(cycle)
                 edges_of_cycle = set([(cycle[i % n], cycle[(i+1) % n])
                                       for i in xrange(n)])
                 edges_of_cycle |= set([edge[::-1]for edge in edges_of_cycle])
                 trivial_cycles.append(edges_of_cycle)
-
+        '''
+        trivial_cycles, non_trivial_cycles =\
+            produce_spanning_set(self._d3_dual_graph, repeat,
+                                 self.boundaries.values())
         # produce all possible additions of non-trivial basis elements
         p = powerset(non_trivial_cycles)
         for i, linear_combination in enumerate(p):
@@ -381,7 +473,9 @@ class Graph(object):
             # to properly perform the symmetric difference of paths. The edges
             # define an ordering that can be recovered through post processing.
             cycles_to_add = []
+            #stderr.write('nontrivial cycles:\n')
             for cycle in linear_combination:
+                #stderr.write(str(cycle)+'\n')
                 n = len(cycle)
                 mod_n = lambda val: val % n   # because I'm lazy
 
@@ -392,6 +486,7 @@ class Graph(object):
                 edges_of_cycle += [edge[::-1]for edge in edges_of_cycle]
 
                 cycles_to_add.append(set(edges_of_cycle))
+            #stderr.write('trivial cycles:\n')
 
             # Now that we have the cycles we're interested in, we need to
             # determine the triangles in the complete subgraphs to "glue" these
@@ -456,20 +551,25 @@ class Graph(object):
                         # we need a support cycle to have the same edge as the
                         # non-trivial one, plus another edge connecting one
                         # vertex of one non-trivial cycle to the other.
-                        if len(current_face_support_cycles) == 2: break
+                        if len(current_face_support_cycles) == 2:
+                            break
                         if (edge1_in_face in trivial_cycle or
                             edge2_in_face in trivial_cycle) and \
-                            possible_edges & trivial_cycle:
+                                possible_edges & trivial_cycle:
                             if not current_face_support_cycles:
+                                stderr.write(str(trivial_cycle)+'\n')
                                 current_face_support_cycles.append(trivial_cycle)
                             elif set.intersection(*current_face_support_cycles) & trivial_cycle:
                                 current_face_support_cycles.append(trivial_cycle)
+                                stderr.write(str(trivial_cycle)+'\n')
 
                     support_cycles += current_face_support_cycles
+
             cycles_to_add += support_cycles
             cycles_to_add = set([frozenset(c) for c in cycles_to_add])
             resulting_cycle = set()
             for cycle in cycles_to_add:
+
                 resulting_cycle ^= cycle
 
             # remove the reversed edges
@@ -507,4 +607,6 @@ class Graph(object):
             path = path[:-1]
             cycles.add(tuple(invert(path)))
             cycles.add(tuple(shift(path)))
+            stderr.write('resulting cycle:\n')
+            stderr.write(str(tuple(shift(path)))+'\n\n')
         return cycles
