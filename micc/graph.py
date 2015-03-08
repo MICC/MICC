@@ -453,7 +453,7 @@ class Graph(object):
                                  self.boundaries.values())
         cycles = set()
         # produce all possible additions of non-trivial basis elements
-        p = list(powerset(non_trivial_cycles))
+        p = powerset(non_trivial_cycles)
         pool = mp.Pool(processes=mp.cpu_count())
 
         for i, linear_combination in enumerate(p):
@@ -495,6 +495,7 @@ class Graph(object):
 
             # The first order of business is to determine in which face
             # these cycles intersect, pairwise (addition is a binary operation).
+            count = 0
             for cycle_id1, cycle_id2 in\
                     combinations(range(len(cycles_to_add)), 2):
 
@@ -525,6 +526,7 @@ class Graph(object):
                 # it's possible we have more than one face shared between
                 # cycles. We have to include the cycles for each
                 for face_id in shared_face_ids:
+                    #stderr.write('number of cycles: '+str(count)+'\n')
                     current_face_surgery_cycles = []
                     face = set(self.non_fourgons[face_id])
                     # Pull out the edges that are actually in the face
@@ -540,6 +542,7 @@ class Graph(object):
                     surger_cycle1 = set(product(edge1_in_face, edge2_in_face))
                     surger_cycle1 |= set([e[::-1] for e in surger_cycle1])
                     current_face_surgery_cycles.append(surger_cycle1)
+                    count+=1
 
                     # Then, of the edges in that surgery cycle, pulling out the
                     # pairs of edges whose element-wise union is the four
@@ -555,6 +558,7 @@ class Graph(object):
                             alt_surger_cycle |= set([e[::-1] for e in alt_surger_cycle])
 
                             current_face_surgery_cycles.append(alt_surger_cycle)
+                            count+=1
 
                     current_face_surgery_cycles = [c for c in current_face_surgery_cycles
                                                    if c & (cycle1_set | cycle2_set)]
@@ -598,22 +602,39 @@ class Graph(object):
 
                 cycles.add(tuple(shift(path)))
             '''
-            for curve_surgery_cycles in product(*surgery_cycles.values()):
-                cycles.add(cycle_addition(curve_surgery_cycles,
-                                          cycles_to_add, self.n,self.repeat))
-            #shuffled_surgery_cycles = list(product(*surgery_cycles.values()))
-            #random.shuffle(shuffled_surgery_cycles)
-            #stderr.write(str(len(shuffled_surgery_cycles))+'\n')
-            #some_cycles = pool.map(partial(cycle_addition,
-            #                               cycles_to_add=cycles_to_add),
-            #                       product(*surgery_cycles.values()))
-            #cycles |= set(some_cycles)
-            if i >=30: break
+            #stderr.write('before product\n')
+            # for k, curve_surgery_cycles in enumerate(product(*surgery_cycles.values())):
+            #     #if k % 100000 == 0: stderr.write(str(k)+'\n')
+            #     cycles.add(cycle_addition(curve_surgery_cycles,
+            #                               cycles_to_add))#, self.n, self.repeat))
+            '''
+            sublist_to_map = []
+            for k, curve_surgery_cycles in enumerate(product(*surgery_cycles.values())):
+                sublist_to_map.append(curve_surgery_cycles)
+                if k % 200000 == 0:
+                    stderr.write(str(k)+'\n')
+                    some_cycles = pool.map(partial(cycle_addition,
+                                                   cycles_to_add=cycles_to_add),
+                                           sublist_to_map)
+                    cycles |= set(some_cycles)
+                    sublist_to_map = []
+            some_cycles = pool.map(partial(cycle_addition,
+                                           cycles_to_add=cycles_to_add),
+                                   sublist_to_map)
+            '''
+            stderr.write('before parallel\n')
+            some_cycles = pool.imap(partial(cycle_addition,
+                                           cycles_to_add=cycles_to_add),
+                                   product(*surgery_cycles.values()), chunksize=200000)
+            stderr.write('after parallel\n')
+            cycles |= set(some_cycles)
+            #if i >=30: break
         cycles.discard(tuple())
+        pool.close()
         return cycles
 
 
-def cycle_addition(curve_surgery_cycles, cycles_to_add, n, rep):
+def cycle_addition(curve_surgery_cycles, cycles_to_add):#, n, rep):
     cycles_to_add_w_surgeries = \
         cycles_to_add + list(curve_surgery_cycles)
 
@@ -638,8 +659,10 @@ def cycle_addition(curve_surgery_cycles, cycles_to_add, n, rep):
 
     while start_vertex != current_vertex:
 
-        next_vertex = [v for v in cycle_graph[current_vertex]
-                       if v != previous_vertex]
+        # next_vertex = [v for v in cycle_graph[current_vertex]
+        #                if v != previous_vertex]
+        next_vertex = filter(lambda v: v != previous_vertex,
+                             cycle_graph[current_vertex])
         previous_vertex = current_vertex
         current_vertex = next_vertex[0]
         path.append(current_vertex)
