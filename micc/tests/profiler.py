@@ -1,5 +1,5 @@
 from micc.curves import CurvePair
-from micc.graph import Graph
+from micc.graph import Graph, cycle_addition
 from line_profiler import LineProfiler
 
 
@@ -22,8 +22,8 @@ def do_profile(follow=[]):
 def get_dist(ladder):
     return CurvePair(ladder, compute=True).distance
 
-#@do_profile(follow=[get_dist,Graph.faces_share_edges, Graph.cycle_dfs, CurvePair.compute_distance,Graph.find_cycles, Graph.path_is_valid])
-@do_profile(follow=[get_dist,Graph.faces_share_edges,Graph.cycle_basis_linear_combination,Graph.find_cycles, Graph.path_is_valid])
+#@do_profile(follow=[get_dist,cycle_addition,Graph.faces_share_edges, Graph.cycle_dfs, CurvePair.compute_distance,Graph.find_cycles, Graph.path_is_valid])
+@do_profile(follow=[get_dist, cycle_addition, Graph.faces_share_edges,Graph.cycle_basis_linear_combination,Graph.find_cycles, Graph.path_is_valid])
 def profile_distance(ladder):
     return get_dist(ladder)
 

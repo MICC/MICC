@@ -2,7 +2,11 @@ from collections import defaultdict, OrderedDict
 from copy import copy, deepcopy
 from itertools import izip, chain, combinations, permutations, product
 from math import floor
-from micc.utils import shift, complex_cmp, invert
+from functools import partial
+import random
+from micc.utils import shift, complex_cmp
+import multiprocessing as mp
+import numpy as np
 from sys import stderr
 import networkx as nx
 
@@ -437,52 +441,21 @@ class Graph(object):
 
                 return non_trivial_cycles
 
-            return generate_trivial_cycles(rep, boundaries),\
-                   generate_nontrivial_cycles(rep, graph)
+            return generate_nontrivial_cycles(rep, graph)
 
-        nx_graph = nx.Graph(graph)
-        cycle_basis = nx.cycle_basis(nx_graph)
-        cycles = set()
-        stderr.write(str(len(cycle_basis))+'\n')
         # from itertools cookbook
         def powerset(iterable):
             # powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)
             s = list(iterable)
             return chain.from_iterable(combinations(s, r)
                                        for r in range(len(s)+1))
-        '''
-        # to make me feel better later
-        non_trivial_cycles = []
-        trivial_cycles = []
-
-        #cycle_index = defaultdict(lambda :[])
-
-        def update_cycle_reverse_index(cycle, cycle_index, index):
-            for arc in cycle:
-                cycle_index[arc].append(index)
-            return cycle_index
-
-        for cycle in cycle_basis:
-            if len(set([v.real for v in cycle])) > 3:
-                cycles.add(tuple(cycle))
-                non_trivial_cycles.append(cycle)
-                #stderr.write(str(cycle)+'\n')
-            else:
-
-                #cycle_index = \
-                #    update_cycle_reverse_index(cycle, cycle_index,
-                #                               non_trivial_index)
-                n = len(cycle)
-                edges_of_cycle = set([(cycle[i % n], cycle[(i+1) % n])
-                                      for i in xrange(n)])
-                edges_of_cycle |= set([edge[::-1]for edge in edges_of_cycle])
-                trivial_cycles.append(edges_of_cycle)
-        '''
-        trivial_cycles, non_trivial_cycles =\
-            produce_spanning_set(self._d3_dual_graph, repeat,
+        non_trivial_cycles = produce_spanning_set(self._d3_dual_graph, repeat,
                                  self.boundaries.values())
+        cycles = set()
         # produce all possible additions of non-trivial basis elements
-        p = powerset(non_trivial_cycles)
+        p = list(powerset(non_trivial_cycles))
+        pool = mp.Pool(processes=mp.cpu_count())
+
         for i, linear_combination in enumerate(p):
             stderr.write('lin_comb_num: '+str(i)+'\n')
 
@@ -495,12 +468,9 @@ class Graph(object):
             # two cycles. Therefore, for each linear combination of non-trivial
             # cycles, we again need all possible surgeries on these cycles.
 
-            #stderr.write('nontrivial cycles:\n')
             for cycle in linear_combination:
-                #stderr.write(str(cycle)+'\n')
                 edges_of_cycle = cycle_vertices_to_edges(cycle)
                 cycles_to_add.append(set(edges_of_cycle))
-            #stderr.write('trivial cycles:\n')
 
             # Now that we have the cycles we're interested in, we need to
             # determine the cycles in the complete subgraphs to surger these
@@ -527,12 +497,9 @@ class Graph(object):
             # these cycles intersect, pairwise (addition is a binary operation).
             for cycle_id1, cycle_id2 in\
                     combinations(range(len(cycles_to_add)), 2):
-                #stderr.write('cycleids: '+str(cycle_id1)+' '+str(cycle_id2)+'\n')
+
                 cycle1_list = linear_combination[cycle_id1]
                 cycle2_list = linear_combination[cycle_id2]
-                #if set([v.real for v in cycle1_list]) ==\
-                #   set([v.real for v in cycle2_list]):
-                #    continue
 
                 cycle1_set = cycles_to_add[cycle_id1]
                 cycle2_set = cycles_to_add[cycle_id2]
@@ -582,68 +549,27 @@ class Graph(object):
                     for edge_pair in combinations(surger_cycle1, 2):
                         e1 = set(edge_pair[0])
                         e2 = set(edge_pair[1])
+
                         if len(set.union(e1, e2)) == 4:
                             alt_surger_cycle = set(product(*edge_pair))
                             alt_surger_cycle |= set([e[::-1] for e in alt_surger_cycle])
+
                             current_face_surgery_cycles.append(alt_surger_cycle)
 
+                    current_face_surgery_cycles = [c for c in current_face_surgery_cycles
+                                                   if c & (cycle1_set | cycle2_set)]
                     # We keep track of what cycles are needed to surger the two
                     # cycles in a given face.
-                    surgery_cycles[(cycle_id1, cycle_id2, face_id)] =\
-                                                    current_face_surgery_cycles
-                    '''
-                    current_face_support_cycles = []
-                    face = set(self.non_fourgons[face_id])
-                    # Pull out the edges that are actually in the face
-                    # of interest
-                    edge1_in_face = find_cycle_edge_in_face(cycle1_set, face)
-                    edge2_in_face = find_cycle_edge_in_face(cycle2_set, face)
-                    if not (edge1_in_face and edge2_in_face):
-                        continue
-
-                    possible_edges = set(product(edge1_in_face, edge2_in_face))
-                    possible_edges |= set([edge[::-1] for edge in
-                                           possible_edges])
-                    # TODO lazy evaluation
-                    for trivial_cycle in trivial_cycles:
-                        # Here we're looking for the trivial cycles that will
-                        # glue the two non-trivial ones together. Therefore,
-                        # we need a support cycle to have the same edge as the
-                        # non-trivial one, plus another edge connecting one
-                        # vertex of one non-trivial cycle to the other.
-                        if len(current_face_support_cycles) == 2:
-                            break
-                        if (edge1_in_face in trivial_cycle or
-                            edge2_in_face in trivial_cycle) and \
-                                possible_edges & trivial_cycle:
-                            if not current_face_support_cycles:
-                                stderr.write(str(trivial_cycle)+'\n')
-                                current_face_support_cycles.append(trivial_cycle)
-                            elif set.intersection(*current_face_support_cycles) & trivial_cycle:
-                                current_face_support_cycles.append(trivial_cycle)
-                                stderr.write(str(trivial_cycle)+'\n')
-                    support_cycles += current_face_support_cycles
-
-                    cycles_to_add += support_cycles
-                    '''
-            #stderr.write('surgery cycles...\n')
-            #for k, v in surgery_cycles.iteritems():
-            #    stderr.write(str(k)+': '+str(v)+'\n')
-            #stderr.write('\n')
+                    surgery_cycles[(cycle_id1, cycle_id2, face_id)] = \
+                        current_face_surgery_cycles
+            '''
             for curve_surgery_cycles in product(*surgery_cycles.values()):
                 cycles_to_add_w_surgeries = \
                     cycles_to_add + list(curve_surgery_cycles)
-                #cycles_to_add_w_surgeries =\
-                #    set([frozenset(c) for c in cycles_to_add_w_surgeries])
+
                 resulting_cycle = set()
                 for cycle in cycles_to_add_w_surgeries:
-
                     resulting_cycle ^= cycle
-
-                # remove the reversed edges
-                #stderr.write('what the fuckbefore\n'+str(resulting_cycle)+'\n')
-                #resulting_cycle = set([tuple(edge) for edge in set(frozenset(e) for e in resulting_cycle)])
-                #stderr.write('what the fuck\n'+str(resulting_cycle)+'\n')
 
                 if not resulting_cycle:
                     continue
@@ -669,9 +595,78 @@ class Graph(object):
                     current_vertex = next_vertex[0]
                     path.append(next_vertex[0])
                 path = path[:-1]
-                #cycles.add(tuple(invert(path)))
+
                 cycles.add(tuple(shift(path)))
-
+            '''
+            for curve_surgery_cycles in product(*surgery_cycles.values()):
+                cycles.add(cycle_addition(curve_surgery_cycles,
+                                          cycles_to_add, self.n,self.repeat))
+            #shuffled_surgery_cycles = list(product(*surgery_cycles.values()))
+            #random.shuffle(shuffled_surgery_cycles)
+            #stderr.write(str(len(shuffled_surgery_cycles))+'\n')
+            #some_cycles = pool.map(partial(cycle_addition,
+            #                               cycles_to_add=cycles_to_add),
+            #                       product(*surgery_cycles.values()))
+            #cycles |= set(some_cycles)
             if i >=30: break
-
+        cycles.discard(tuple())
         return cycles
+
+
+def cycle_addition(curve_surgery_cycles, cycles_to_add, n, rep):
+    cycles_to_add_w_surgeries = \
+        cycles_to_add + list(curve_surgery_cycles)
+
+    resulting_cycle = set()
+    for cycle in cycles_to_add_w_surgeries:
+        resulting_cycle ^= cycle
+
+    if not resulting_cycle:
+        return ()
+
+    cycle_graph = defaultdict(set)
+    for edge in resulting_cycle:
+        cycle_graph[edge[0]].add(edge[1])
+        #cycle_graph[edge[1]].add(edge[0])
+
+    if any(len(v) > 2 for v in cycle_graph.itervalues()):
+        return ()
+    path = list(resulting_cycle.pop())
+    current_vertex = path[-1]
+    start_vertex = path[0]
+    previous_vertex = start_vertex
+
+    while start_vertex != current_vertex:
+
+        next_vertex = [v for v in cycle_graph[current_vertex]
+                       if v != previous_vertex]
+        previous_vertex = current_vertex
+        current_vertex = next_vertex[0]
+        path.append(current_vertex)
+    path = path[:-1]
+    '''
+    N = n*rep
+    cycles = cycles_to_add + list(curve_surgery_cycles)
+    complex_to_index = lambda c: c.real + c.imag
+    index_to_complex = lambda i: (i - (i % rep+1)) + (i % (rep+1))*1j
+    K = len(cycles)
+    if not K: return () # :)
+    cycle_matrices = np.zeros((K, N, N), dtype=int)
+    for k, cycle in enumerate(cycles):
+        N = len(cycle)
+        for edge in cycle:
+            i = complex_to_index(edge[0])
+            j = complex_to_index(edge[1])
+            cycle_matrices[k, i, j] = 1
+    #stderr.write(str(cycle_matrices)+' '+str(N)+' '+str(K)+'\n')
+    resulting_cycle = np.mod(cycle_matrices.sum(axis=0), 2)
+    #stderr.write(str(resulting_cycle)+'\n')
+    loc = np.where(resulting_cycle)
+    edges = np.vstack([loc[0], loc[1]])
+    path = list(edges[0, :][::2])
+    #for j in xrange(edges.shape[1]):
+    #    path.append(tuple(edges[:, j]+1))
+    stderr.write(str(edges)+'\n')
+    stderr.write(str(path)+'\n')
+    '''
+    return tuple(shift(path))
