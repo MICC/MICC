@@ -449,8 +449,10 @@ class Graph(object):
             s = list(iterable)
             return chain.from_iterable(combinations(s, r)
                                        for r in range(len(s)+1))
-        non_trivial_cycles = produce_spanning_set(self._d3_dual_graph, repeat,
-                                 self.boundaries.values())
+        #non_trivial_cycles = produce_spanning_set(self._d3_dual_graph, repeat,
+        #                         self.boundaries.values())
+        cycle_basis = nx.Graph(self.dual_graph)
+
         cycles = set()
         # produce all possible additions of non-trivial basis elements
         p = powerset(non_trivial_cycles)
@@ -619,14 +621,23 @@ class Graph(object):
                                            cycles_to_add=cycles_to_add),
                                    sublist_to_map)
             '''
+            '''
             some_cycles = pool.imap(partial(cycle_addition,
                                            cycles_to_add=cycles_to_add),
                                    product(*surgery_cycles.values()),
                                    chunksize=200000)
             cycles |= set(some_cycles)
+            '''
+            for curve_surgery_cycles in product(*surgery_cycles.values()):
+                resulting_cycle = cycle_addition(curve_surgery_cycles, cycles_to_add)
+                if resulting_cycle:
+                    stderr.write('resulting cycle: '+str(resulting_cycle)+'\n')
+                    stderr.write('non trivial cycles: '+str(cycles_to_add)+'\n')
+                    stderr.write('surgery cycle: '+str(curve_surgery_cycles)+'\n\n')
+                cycles.add(resulting_cycle)
             #if i >=30: break
         cycles.discard(tuple())
-        pool.close()
+        #pool.close()
         return cycles
 
 

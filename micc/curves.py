@@ -342,10 +342,10 @@ class CurvePair(object):
                 complement_curves = []
                 stderr.write('before\n')
                 for cycle in cycles:
-                    arcpath = [int(v.real) for v in cycle]
-                    if len(arcpath) > len(set(arcpath)):
-                        stderr.write('IT WORKS!!!!!\n')
-                    stderr.write(str(cycle)+'\n')
+                    # arcpath = [int(v.real) for v in cycle]
+                    # if len(arcpath) > len(set(arcpath)):
+                    #     stderr.write('IT WORKS!!!!!\n')
+                    # stderr.write(str(cycle)+'\n')
                     if not is_valid(cycle):
                         continue
                     if not self.graph.path_is_valid(cycle):
@@ -361,12 +361,12 @@ class CurvePair(object):
                         # complement of the transverse curve intersection the
                         # reference curve.
 
-                stderr.write('after\n')
-                for cycle in complement_curves:
-                    arcpath = [v for v in cycle.arc_path]
-                    if len(arcpath) > len(set(arcpath)):
-                        stderr.write('IT WORKS!!!!!\n')
-                    stderr.write(str(arcpath)+'\n')
+                # stderr.write('after\n')
+                # for cycle in complement_curves:
+                #     arcpath = [v for v in cycle.arc_path]
+                #     if len(arcpath) > len(set(arcpath)):
+                #         stderr.write('IT WORKS!!!!!\n')
+                #     stderr.write(str(arcpath)+'\n')
                 if recursive:
                     distances = set([curvepair.distance for curvepair in
                                      complement_curves])
