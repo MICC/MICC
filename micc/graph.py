@@ -495,7 +495,6 @@ class Graph(object):
 
             # The first order of business is to determine in which face
             # these cycles intersect, pairwise (addition is a binary operation).
-            count = 0
             for cycle_id1, cycle_id2 in\
                     combinations(range(len(cycles_to_add)), 2):
 
@@ -539,17 +538,16 @@ class Graph(object):
                     # One should note here that the cartesian product of the
                     # edges (as collections of vertices) produce one of three
                     # surgery cycles.
-                    surger_cycle1 = set(product(edge1_in_face, edge2_in_face))
-                    surger_cycle1 |= set([e[::-1] for e in surger_cycle1])
+                    to_product = set(product(edge1_in_face, edge2_in_face))
+                    surger_cycle1 = set([e[::-1] for e in to_product]) | to_product
                     current_face_surgery_cycles.append(surger_cycle1)
-                    count+=1
 
                     # Then, of the edges in that surgery cycle, pulling out the
                     # pairs of edges whose element-wise union is the four
                     # original vertices (hence len(...) == 4), the cartesian
                     # product of these edge pairs produce the other two surgery
                     # cycles we need.
-                    for edge_pair in combinations(surger_cycle1, 2):
+                    for edge_pair in combinations(to_product, 2):
                         e1 = set(edge_pair[0])
                         e2 = set(edge_pair[1])
 
@@ -558,7 +556,6 @@ class Graph(object):
                             alt_surger_cycle |= set([e[::-1] for e in alt_surger_cycle])
 
                             current_face_surgery_cycles.append(alt_surger_cycle)
-                            count+=1
 
                     current_face_surgery_cycles = [c for c in current_face_surgery_cycles
                                                    if c & (cycle1_set | cycle2_set)]
@@ -622,11 +619,10 @@ class Graph(object):
                                            cycles_to_add=cycles_to_add),
                                    sublist_to_map)
             '''
-            stderr.write('before parallel\n')
             some_cycles = pool.imap(partial(cycle_addition,
                                            cycles_to_add=cycles_to_add),
-                                   product(*surgery_cycles.values()), chunksize=200000)
-            stderr.write('after parallel\n')
+                                   product(*surgery_cycles.values()),
+                                   chunksize=200000)
             cycles |= set(some_cycles)
             #if i >=30: break
         cycles.discard(tuple())
@@ -648,7 +644,6 @@ def cycle_addition(curve_surgery_cycles, cycles_to_add):#, n, rep):
     cycle_graph = defaultdict(set)
     for edge in resulting_cycle:
         cycle_graph[edge[0]].add(edge[1])
-        #cycle_graph[edge[1]].add(edge[0])
 
     if any(len(v) > 2 for v in cycle_graph.itervalues()):
         return ()
@@ -658,38 +653,11 @@ def cycle_addition(curve_surgery_cycles, cycles_to_add):#, n, rep):
     previous_vertex = start_vertex
 
     while start_vertex != current_vertex:
-
-        # next_vertex = [v for v in cycle_graph[current_vertex]
-        #                if v != previous_vertex]
         next_vertex = filter(lambda v: v != previous_vertex,
                              cycle_graph[current_vertex])
         previous_vertex = current_vertex
         current_vertex = next_vertex[0]
         path.append(current_vertex)
     path = path[:-1]
-    '''
-    N = n*rep
-    cycles = cycles_to_add + list(curve_surgery_cycles)
-    complex_to_index = lambda c: c.real + c.imag
-    index_to_complex = lambda i: (i - (i % rep+1)) + (i % (rep+1))*1j
-    K = len(cycles)
-    if not K: return () # :)
-    cycle_matrices = np.zeros((K, N, N), dtype=int)
-    for k, cycle in enumerate(cycles):
-        N = len(cycle)
-        for edge in cycle:
-            i = complex_to_index(edge[0])
-            j = complex_to_index(edge[1])
-            cycle_matrices[k, i, j] = 1
-    #stderr.write(str(cycle_matrices)+' '+str(N)+' '+str(K)+'\n')
-    resulting_cycle = np.mod(cycle_matrices.sum(axis=0), 2)
-    #stderr.write(str(resulting_cycle)+'\n')
-    loc = np.where(resulting_cycle)
-    edges = np.vstack([loc[0], loc[1]])
-    path = list(edges[0, :][::2])
-    #for j in xrange(edges.shape[1]):
-    #    path.append(tuple(edges[:, j]+1))
-    stderr.write(str(edges)+'\n')
-    stderr.write(str(path)+'\n')
-    '''
+
     return tuple(shift(path))
