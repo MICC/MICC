@@ -317,10 +317,11 @@ class CurvePair(object):
                 for i in xrange(n+1):
                     arc = cycle[i % n]
                     next_arc = cycle[(i+1) % n]
-                    if next_arc.real not in self.graph.dual_graph[arc.real]:
+                    if next_arc.real == arc.real:
+                        return False
+                    if next_arc not in self.graph.dual_graph[arc]:
                         return False
                 return True
-            d3_curves = None
             for rep in xrange(1, 2+1):  # max of distance 4
 
                 # Create a graph of appropriate replication number
@@ -334,18 +335,16 @@ class CurvePair(object):
                         continue
                     cycles_no_inversion.add(cycle)
                 cycles = cycles_no_inversion
-
-                #for cycle in cycles:
-                #    stderr.write(str([v for v in cycle])+'\n')
-                #stderr.write(str(len(cycles))+'\n')
+                stderr.write('before:\n')
+                for cycle in cycles:
+                    a = [v.real for v in cycle]
+                    if len(set(a)) < len(a):
+                        stderr.write('IT WORKS!!\n')
+                    stderr.write(str([v for v in cycle])+'\n')
+                stderr.write(str(len(cycles))+'\n')
 
                 complement_curves = []
-                stderr.write('before\n')
                 for cycle in cycles:
-                    # arcpath = [int(v.real) for v in cycle]
-                    # if len(arcpath) > len(set(arcpath)):
-                    #     stderr.write('IT WORKS!!!!!\n')
-                    # stderr.write(str(cycle)+'\n')
                     if not is_valid(cycle):
                         continue
                     if not self.graph.path_is_valid(cycle):
@@ -354,19 +353,16 @@ class CurvePair(object):
                     curvepair_in_comp = CurvePair.curvepair_from_arc_path(
                                                 cycle, self.verbose_boundaries,
                                                             compute=recursive)
-
                     if curvepair_in_comp.genus <= self.genus:
                         complement_curves.append(curvepair_in_comp)
                         # This creates the short-list of curves in the
                         # complement of the transverse curve intersection the
                         # reference curve.
 
-                # stderr.write('after\n')
-                # for cycle in complement_curves:
-                #     arcpath = [v for v in cycle.arc_path]
-                #     if len(arcpath) > len(set(arcpath)):
-                #         stderr.write('IT WORKS!!!!!\n')
-                #     stderr.write(str(arcpath)+'\n')
+                stderr.write('after\n')
+                for cycle in complement_curves:
+                    arcpath = [v for v in cycle.arc_path]
+                    stderr.write(str(arcpath)+'\t'+str(len(arcpath))+'\n')
                 if recursive:
                     distances = set([curvepair.distance for curvepair in
                                      complement_curves])

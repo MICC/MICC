@@ -30,16 +30,12 @@ class Graph(object):
         self.n = n
         self.repeat = repeat
         self.boundaries = boundaries
-        self._d3_dual_graph = None#self.create_dual_graph(self.boundaries)
+        self._d3_dual_graph = None
+        self.handles = None
         self.dual_graph, self.faces_containing_arcs = \
             self.create_dual_graph(self.boundaries, repeat=repeat)
         self.cycles = set()
         self.dual_graph_copy = deepcopy(self.dual_graph)
-        #self._d3_cycles = self.find_d3_cycles()
-        # stderr.write('dualgraph\n')
-        # for k,v in self.dual_graph.iteritems():
-        #     stderr.write(str(k)+': '+str(v)+'\n')
-        # stderr.write('\n')
 
     def create_dual_graph(self, boundaries, repeat=1):
         """
@@ -117,7 +113,7 @@ class Graph(object):
         # and the kth repetition of the arc, we denote this as vertex i+k*j,
         # where j is the Python imaginary unit. The imaginary value denotes
         # which arc multiplicity we're interested in, and the real value
-        # denotes the arc of interest.
+        # denotes the overall arc of interest.
 
         # Change types to complex
         complex_dual_graph = {k+0j: [val+0j for val in v] for k, v in
@@ -126,7 +122,7 @@ class Graph(object):
         if repeat >= 1:
             for arc, adj_list in dual_graph.iteritems():
                 if len(adj_list) == 2:
-                # This means we the arc is in a 4-gon. We don't want to have
+                # This means  the arc is in a 4-gon. We don't want to have
                 # total adjacency, since that's making the graph more complex,
                 # so we only add the parallel arcs.
                     for i in xrange(1, repeat):
@@ -162,6 +158,67 @@ class Graph(object):
                                 to_remove = adj_arc.real+i*1j
                                 if to_remove in complex_dual_graph[arc]:
                                     complex_dual_graph[arc].remove(to_remove)
+
+        arcs_to_switch = set()
+        for arc in complex_dual_graph.iterkeys():
+            if len([region for region in self.fourgons
+                    if arc.real in region]) == 1:
+                arcs_to_switch.add(arc)
+
+        # find the endpoints of these arcs on handles:
+        handles_to_reglue = set()
+        for arc in arcs_to_switch:
+            next_arc = filter(lambda v: v != arc.real, [region for region in
+                                self.fourgons if arc.real in region][0])[0]
+            next_arc += arc.imag*1j
+            path = [arc, next_arc]
+
+            while next_arc not in arcs_to_switch:
+                next_arc = [v for v in complex_dual_graph[next_arc]
+                            if v not in path][0]
+                path.append(next_arc)
+            handles_to_reglue.add(tuple(v.real for v in path))
+
+        # a list of the arcs that bound handles, that must be reglued
+        # to form an orientable surface
+
+        num_handles = len(handles_to_reglue)
+        i = 0
+
+        while i < num_handles:
+            t = handles_to_reglue.pop()
+            if t[::-1] in handles_to_reglue:
+                continue
+            else:
+                handles_to_reglue.add(t)
+            i += 1
+
+        self.handles = handles_to_reglue
+
+        subarc_identifications = zip(range(repeat), range(repeat-1, -1, -1))
+
+        for path in handles_to_reglue:
+            start_point = path[0]
+            end_point = path[1]
+            adjacencies = {arc: adj_list for arc, adj_list in
+                           complex_dual_graph.iteritems()
+                           if arc.real == start_point or
+                           arc.real == end_point}
+
+            for i in xrange(repeat):
+                subarc = i*1j
+                sp = start_point + subarc
+                ep = end_point + subarc
+
+                adjacencies[sp].remove(ep)
+                adjacencies[ep].remove(sp)
+
+            for i, j in subarc_identifications:
+
+                    adjacencies[start_point + i*1j].append(end_point + j*1j)
+                    adjacencies[end_point + j*1j].append(start_point + i*1j)
+
+            complex_dual_graph.update(adjacencies)
 
         return complex_dual_graph, faces_containing_arcs
 
@@ -283,27 +340,26 @@ class Graph(object):
             current_path.append(current_node)
             self._d3_dual_graph_copy[start_node].remove(current_node)
             self._d3_dual_graph_copy[current_node].remove(start_node)
+
             loops += list(self.cycle_dfs(current_node, start_node,
                                          current_path))
+
             self._d3_dual_graph_copy[start_node].append(current_node)
             self._d3_dual_graph_copy[current_node].append(start_node)
             current_path.pop()
         else:
-            #if len(current_path) > 1:
-            #    self.trim_dual_graph(self.dual_graph_copy, current_path)
-
             for adjacent_node in set(self._d3_dual_graph_copy[current_node]):
                 current_path.append(adjacent_node)
+
                 self._d3_dual_graph_copy[current_node].remove(adjacent_node)
                 self._d3_dual_graph_copy[adjacent_node].remove(current_node)
                 loops += list(self.cycle_dfs(adjacent_node, start_node,
                                              current_path))
+
                 self._d3_dual_graph_copy[current_node].append(adjacent_node)
                 self._d3_dual_graph_copy[adjacent_node].append(current_node)
                 current_path.pop()
 
-            #if len(current_path) > 1:
-            #    self.untrim_dual_graph(self.dual_graph_copy, current_path)
         return loops
 
     def find_d3_cycles(self):
@@ -318,6 +374,7 @@ class Graph(object):
                     adjacency_list.remove(vertex)
             return graph
         d3_cycles = set()
+        self._d3_dual_graph_copy = deepcopy(self._d3_dual_graph)
         for vertex in self._d3_dual_graph:
 
             if vertex in self._d3_dual_graph_copy:
@@ -362,8 +419,10 @@ class Graph(object):
 
         self.cycles = set(self.cycles)
         '''
-        self.cycles = self.cycle_basis_linear_combination(self.dual_graph, repeat=repeat)
+        self.cycles = self.cycle_basis_linear_combination(self.dual_graph,
+                                                          repeat=repeat)
         return self.cycles
+        # return self.find_d3_cycles()
 
     def cycle_basis_linear_combination(self, graph, repeat=1):
 
@@ -379,7 +438,7 @@ class Graph(object):
             edges_of_cycle |= set([edge[::-1]for edge in edges_of_cycle])
             return edges_of_cycle
 
-        def produce_spanning_set(graph, rep, boundaries):
+        def produce_spanning_set(graph, d3_graph, rep, boundaries):
             '''
             The intention here is to produce a set of cycles that spans the same
             space as the space spanned by the cycle basis. There will be more
@@ -410,11 +469,12 @@ class Graph(object):
 
                 return trivial_cycles_edges
 
-            def generate_nontrivial_cycles(rep, d3_graph):
+            def generate_nontrivial_cycles(rep, d3_graph, graph):
+                '''
                 # determine the homotopically nontrivial cycles on the original
                 # graph (passing through arcs at most once) (Note: these are
                 # already in complex form (v_1+0j, v_2+0j, ... v_k+0j)
-                stderr.write(str(d3_graph)+'\n')
+
                 nx_graph = nx.Graph(d3_graph)
                 cycle_basis = nx.cycle_basis(nx_graph)
 
@@ -440,8 +500,61 @@ class Graph(object):
                         non_trivial_cycles.append(parallel_cycle)
 
                 return non_trivial_cycles
+                '''
 
-            return generate_nontrivial_cycles(rep, graph)
+                # The goal here is to isolate the cycles that pass over exactly
+                # one handle and take linear combinations of these in addition
+                # to their parallel copies. Unfortunately, the re-gluing of the
+                # graph handles (v_i+k*j<=>v'_i+(n-k)*j ) for topological
+                # correctness makes this issue require some finesse.
+
+                # We already have self.handles, so we need the cycles passing
+                # over these handles. Note that Graph(repeat=1) produces
+                # all curves passing through arcs at most once, and there are
+                # 2*g - 1 cycles of interest: one for each handle.
+
+                d3_cycles = self.find_d3_cycles()
+
+                # list of tuples:
+                # - tup[0] = cycle
+                # - tup[1] = handle the cycle crosses
+                handle_cycles = []
+                for handle in self.handles:
+                    for cycle in d3_cycles:
+                        handle_in_cycle = set(handle) & \
+                                          set([v.real for v in cycle])
+
+                        if handle_in_cycle:
+                            difference =set(v.real for v in cycle) - set(handle)
+                            if all(difference & set(h) == set()
+                                   for h in self.handles):
+                                handle_cycles.append((cycle, handle))
+                # TODO now that we have the handle cycles, we need to update
+                # TODO them for the reglued graph and twidle the vertices
+                # TODO to make them valid in our graph.
+
+                # Now that we have all the cycles crossing each handle once,
+                # we need to produce the parallel copies and trace their path in
+                # complex_dual_graph. This is required because edges were
+                # reassigned during graph generation
+                if repeat > 1:
+                    non_trivial_cycles = []
+                    subarc_ids = zip(range(repeat), range(repeat-1, -1, -1))
+                    for cycle, handle in handle_cycles:
+                        start_arc = handle[0]
+                        end_arc = handle[1]
+                        start_index = cycle.index(start_arc)
+                        end_index = cycle.index(end_arc)
+                        for i, j in subarc_ids:
+                            repeated_cycle = [v+i*1j for v in cycle]
+                            repeated_cycle[start_index] = start_arc + j*1j
+                            repeated_cycle[end_index] = end_arc + i*1j
+                            non_trivial_cycles.append(repeated_cycle)
+
+                    return non_trivial_cycles
+                else:
+                    return handle_cycles
+            return generate_nontrivial_cycles(rep, d3_graph, graph)
 
         # from itertools cookbook
         def powerset(iterable):
@@ -449,17 +562,30 @@ class Graph(object):
             s = list(iterable)
             return chain.from_iterable(combinations(s, r)
                                        for r in range(len(s)+1))
-        #non_trivial_cycles = produce_spanning_set(self._d3_dual_graph, repeat,
-        #                         self.boundaries.values())
-        cycle_basis = nx.Graph(self.dual_graph)
+        '''
+        if repeat == 1:
+            return self.find_d3_cycles()
+        else:
+            pass
+        '''
+        # non_trivial_cycles = produce_spanning_set(self.dual_graph,
+        #                                           self._d3_dual_graph,
+        #                                           repeat,
+        #                                           self.boundaries.values())
+        cycle_basis = nx.cycle_basis(nx.Graph(graph))
+        non_trivial_cycles = [c for c in cycle_basis if len(c) > 3]
 
+        stderr.write('nontrivial cycles\n')
+        for c in non_trivial_cycles:
+            stderr.write(str(c)+'\n')
         cycles = set()
+
         # produce all possible additions of non-trivial basis elements
         p = powerset(non_trivial_cycles)
-        pool = mp.Pool(processes=mp.cpu_count())
+
+        # pool = mp.Pool(processes=mp.cpu_count())
 
         for i, linear_combination in enumerate(p):
-            stderr.write('lin_comb_num: '+str(i)+'\n')
 
             # We need to pull out the edges, both forward and backward, in order
             # to properly perform the symmetric difference of paths. The edges
@@ -527,9 +653,9 @@ class Graph(object):
                 # it's possible we have more than one face shared between
                 # cycles. We have to include the cycles for each
                 for face_id in shared_face_ids:
-                    #stderr.write('number of cycles: '+str(count)+'\n')
                     current_face_surgery_cycles = []
                     face = set(self.non_fourgons[face_id])
+
                     # Pull out the edges that are actually in the face
                     # of interest
                     edge1_in_face = find_cycle_edge_in_face(cycle1_set, face)
@@ -566,62 +692,6 @@ class Graph(object):
                     surgery_cycles[(cycle_id1, cycle_id2, face_id)] = \
                         current_face_surgery_cycles
             '''
-            for curve_surgery_cycles in product(*surgery_cycles.values()):
-                cycles_to_add_w_surgeries = \
-                    cycles_to_add + list(curve_surgery_cycles)
-
-                resulting_cycle = set()
-                for cycle in cycles_to_add_w_surgeries:
-                    resulting_cycle ^= cycle
-
-                if not resulting_cycle:
-                    continue
-
-                cycle_graph = defaultdict(set)
-                for edge in resulting_cycle:
-                    cycle_graph[edge[0]].add(edge[1])
-                    cycle_graph[edge[1]].add(edge[0])
-
-                if any(len(v) > 2 for v in cycle_graph.itervalues()):
-                    continue
-
-                path = list(resulting_cycle.pop())
-                current_vertex = path[-1]
-                start_vertex = path[0]
-                previous_vertex = start_vertex
-
-                while start_vertex != current_vertex:
-
-                    next_vertex = [v for v in cycle_graph[current_vertex]
-                                   if v != previous_vertex]
-                    previous_vertex = current_vertex
-                    current_vertex = next_vertex[0]
-                    path.append(next_vertex[0])
-                path = path[:-1]
-
-                cycles.add(tuple(shift(path)))
-            '''
-            #stderr.write('before product\n')
-            # for k, curve_surgery_cycles in enumerate(product(*surgery_cycles.values())):
-            #     #if k % 100000 == 0: stderr.write(str(k)+'\n')
-            #     cycles.add(cycle_addition(curve_surgery_cycles,
-            #                               cycles_to_add))#, self.n, self.repeat))
-            '''
-            sublist_to_map = []
-            for k, curve_surgery_cycles in enumerate(product(*surgery_cycles.values())):
-                sublist_to_map.append(curve_surgery_cycles)
-                if k % 200000 == 0:
-                    stderr.write(str(k)+'\n')
-                    some_cycles = pool.map(partial(cycle_addition,
-                                                   cycles_to_add=cycles_to_add),
-                                           sublist_to_map)
-                    cycles |= set(some_cycles)
-                    sublist_to_map = []
-            some_cycles = pool.map(partial(cycle_addition,
-                                           cycles_to_add=cycles_to_add),
-                                   sublist_to_map)
-            '''
-            '''
             some_cycles = pool.imap(partial(cycle_addition,
                                            cycles_to_add=cycles_to_add),
                                    product(*surgery_cycles.values()),
@@ -630,18 +700,13 @@ class Graph(object):
             '''
             for curve_surgery_cycles in product(*surgery_cycles.values()):
                 resulting_cycle = cycle_addition(curve_surgery_cycles, cycles_to_add)
-                if resulting_cycle:
-                    stderr.write('resulting cycle: '+str(resulting_cycle)+'\n')
-                    stderr.write('non trivial cycles: '+str(cycles_to_add)+'\n')
-                    stderr.write('surgery cycle: '+str(curve_surgery_cycles)+'\n\n')
                 cycles.add(resulting_cycle)
-            #if i >=30: break
         cycles.discard(tuple())
         #pool.close()
         return cycles
 
 
-def cycle_addition(curve_surgery_cycles, cycles_to_add):#, n, rep):
+def cycle_addition(curve_surgery_cycles, cycles_to_add):
     cycles_to_add_w_surgeries = \
         cycles_to_add + list(curve_surgery_cycles)
 
@@ -662,10 +727,11 @@ def cycle_addition(curve_surgery_cycles, cycles_to_add):#, n, rep):
     current_vertex = path[-1]
     start_vertex = path[0]
     previous_vertex = start_vertex
-
     while start_vertex != current_vertex:
         next_vertex = filter(lambda v: v != previous_vertex,
                              cycle_graph[current_vertex])
+        if not len(next_vertex):
+            return ()
         previous_vertex = current_vertex
         current_vertex = next_vertex[0]
         path.append(current_vertex)
