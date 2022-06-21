@@ -32,7 +32,7 @@ setup(name='MICC',
       description='An implementation of the Birman-Margalit-Menasco Theorem, to be used in a experimental, exploratory manner.',
       long_description=open('README.rst').read(),
       install_requires=[
-          "numpy== 1.9.1",
+          "numpy== 1.22.0",
           "nose >= 1.3.1",
           "rednose"
       ],
